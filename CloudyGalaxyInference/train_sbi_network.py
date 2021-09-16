@@ -10,7 +10,6 @@ from interpolate_model_grid import InterpolateModelGrid
 from gaussian_noise_model import GaussianNoiseModel
 
 from sbi import utils as utils
-from sbi import analysis as analysis
 from sbi.inference.base import infer
 
 #import photoionization models
@@ -73,10 +72,10 @@ prior = utils.BoxUniform(low = torch.tensor([10, -1., -4., 0.1, -2.]),
 print(prior)
 posterior = infer(simulation, prior, 'SNPE', num_simulations=100000)
 
-torch.save(posterior.net, 'test_2')
-# -----------------------------------------------------------------------------
+torch.save(posterior.net, 'sbi_inference_model_DESI_BGS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII')
+
 posterior = infer(simulation, prior, 'SNPE', num_simulations=10)
-posterior.net = torch.load('test')
+posterior.net = torch.load('../models/sbi_inference_model_DESI_BGS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII')
 x_o_1s = []
 for i in range(1):
     torch.manual_seed(i+11)
