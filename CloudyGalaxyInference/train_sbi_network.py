@@ -44,20 +44,6 @@ line_num_mask = np.sum(denali_fastspec[line_flux_labels].to_numpy()!=0.0, axis=1
 denali_fastspec_hdu2 = denali_fastspec_hdu2[gal_mask & sn_mask & z_mask & sf_mask].reset_index()
 denali_fastspec = denali_fastspec[gal_mask & sn_mask & z_mask & sf_mask].reset_index()
 
-#Extinction correction
-extinction_correction_factor = np.ones((len(denali_fastspec), 10))
-
-for i in range(len(denali_fastspec)):
-    print('Extinction correction: ', i)
-    obs_wavelength = rest_to_obs_wavelength(line_wavelengths * u.angstrom, denali_fastspec['CONTINUUM_Z'][i])
-    extinction_correction_factor[i] = galactic_extinction_correction(denali_fastspec_hdu2['RA'][i]*u.degree, denali_fastspec_hdu2['DEC'][i]*u.degree, obs_wavelength, np.ones_like(line_wavelengths)*u.erg * u.cm**-2 * u.s**-1).value
-
-for i in range(len(line_labels)):
-    print(extinction_correction_factor[i])
-    denali_fastspec[line_labels[i]+'_FLUX'] = denali_fastspec[line_labels[i]+'_FLUX'] * extinction_correction_factor[:, i]
-    denali_fastspec[line_labels[i]+'_FLUX_ERR'] = denali_fastspec[line_labels[i]+'_FLUX_IVAR']**-0.5 * extinction_correction_factor[:, i]
-
-
 flux_catalogue = pd.DataFrame(denali_fastspec[line_flux_labels].to_numpy(), columns=line_labels)
 sn_catalogue = pd.DataFrame(denali_fastspec[line_flux_labels].to_numpy() * denali_fastspec[line_flux_ivar_labels].to_numpy()**0.5, columns=line_labels)
 
