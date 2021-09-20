@@ -10,7 +10,7 @@ class GaussianNoiseModel():
         self.reference_index = np.argwhere(np.array(line_list)==amplitude_reference_line)[0]
         return
 
-    def set_flux_amplitude(self, quantile='random', slice_width=0.2, reference_amplitude='random'):
+    def set_flux_amplitude(self, quantile='random', slice_width=0.1, reference_amplitude='random'):
         flux_dist = self.flux_catalogue[self.amplitude_reference_line]
         sn_dist = self.sn_catalogue[self.amplitude_reference_line]
         if quantile=='random':
@@ -27,7 +27,7 @@ class GaussianNoiseModel():
             self.sn_reference = np.nanquantile(sn_dist[flux_slice], quantile)
         return self.reference_amplitude, self.sn_reference
 
-    def set_sn_level(self, normalized_line_flux, slice_width=0.2):
+    def set_sn_level(self, normalized_line_flux, slice_width=0.1):
         flux = self.reference_amplitude * normalized_line_flux
         sn_level = np.zeros_like(flux)
         for i in range(len(sn_level)):
@@ -42,9 +42,12 @@ class GaussianNoiseModel():
     def add_gaussian_noise(self, flux, sn_level):
         flux_error = np.zeros_like(flux)
         for i in range(len(flux)):
-            if sn_level[i]==0. or pd.isna(sn_level[i]):
-                flux_error[i] = 5*self.reference_amplitude
+            if (sn_level[i] == 0. or pd.isna(sn_level[i])) and (flux[i] == 0. or pd.isna(flux[i])):
+                flux_error[i] = 5 * self.reference_amplitude
+                flux[i] = 0.
+            elif (sn_level[i] == 0. or pd.isna(sn_level[i])) and flux[i] != 0.:
+                flux_error[i] = 5 * flux[i]
             else:
-                flux_error[i] = flux[i]/sn_level[i]
+                flux_error[i] = flux[i] / sn_level[i]
         flux_and_noise = flux + np.random.normal(loc=0.0, scale=1.0, size=len(flux)) * flux_error
         return flux_and_noise, flux_error
