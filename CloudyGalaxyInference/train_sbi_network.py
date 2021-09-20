@@ -12,6 +12,8 @@ from gaussian_noise_model import GaussianNoiseModel
 from sbi import utils as utils
 from sbi.inference.base import infer
 
+# Train model for 'OII_3726', 'OII_3729', 'HBETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'HALPHA', 'NII_6584', 'SII_6716', 'SII_6731'
+
 #import photoionization models
 path = '/Users/dirk/Documents/PhD/scripts/CloudyGalaxy/models/test_model_high_res/'
 model_labels = list(np.load(path + 'test_model_high_res_age_2Myr_n_tau_-0p7_emission_line_labels.npy'))
