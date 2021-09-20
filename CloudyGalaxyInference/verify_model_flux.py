@@ -12,7 +12,7 @@ from sbi.inference.base import infer
 from interpolate_model_grid import InterpolateModelGrid
 from galactic_extinction_correction import galactic_extinction_correction, rest_to_obs_wavelength
 
-# Verify model for 'OII_3726', 'OII_3729', 'HBETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'HALPHA', 'NII_6584'
+# Verify model for 'OII_3726', 'OII_3729', 'HBETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'HALPHA', 'NII_6584', 'SII_6716', 'SII_6731'
 
 #import photoionization models
 path = '/Users/dirk/Documents/PhD/scripts/CloudyGalaxy/models/test_model_high_res/'
