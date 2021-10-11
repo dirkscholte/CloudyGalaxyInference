@@ -1,1 +1,4 @@
-/sbi-logs/*
+/CloudyGalaxyInference/sbi-logs/*
+/CloudyGalaxyInference/plots/*
+/CloudyGalaxyInference/plotting_scripts/*
+/models/*
