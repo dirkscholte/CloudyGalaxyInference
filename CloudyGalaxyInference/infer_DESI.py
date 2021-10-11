@@ -89,8 +89,13 @@ def calc_log_gas(logZ, xi, logtau):
     Zsun = 0.0142 # Asplund (2009) photospheric mass fraction
     return np.log10(0.2 * 10**logtau/(xi * 10**logZ * Zsun))
 
-#Fill undetected emission lines with noise
-def infer_denali(flux, flux_error):
+def prepare_input(flux, flux_error):
+    '''
+    Function to fill undetected emission lines with noise
+    :param flux: emission line flux array
+    :param flux_error: emission line flux error array
+    :return:
+    '''
     for i in range(len(flux)):
         if flux[i] == 0. or flux_error[i] == 0. or np.isinf(flux_error)[i]:
             flux_error[i] = 5 * np.max(flux)
@@ -100,6 +105,14 @@ def infer_denali(flux, flux_error):
 
 #Model fitting function
 def fit_model_to_df(index, prior_min=np.array([[-large_number, -1., -4., 0.1, -2.]]), prior_max=np.array([[large_number, 0.7, -1.0, 0.6, 0.6]]), plotting=False):
+    '''
+    Fitting SBI model to data.
+    :param index: Unique index in the data_df
+    :param prior_min: Prior lower bounds
+    :param prior_max: Prior upper bounds
+    :param plotting: Boolean to decide if corner plots should be generated.
+    :return:
+    '''
     parameters_out = np.ones((25)) * -999.
     galaxy = data_df[data_df['TARGETID'] == index]
     parameters_out[0] = galaxy['TARGETID'].to_numpy()[0]
@@ -128,22 +141,6 @@ def fit_model_to_df(index, prior_min=np.array([[-large_number, -1., -4., 0.1, -2
             plt.savefig('./plots/corner_{}.pdf'.format(int(parameters_out[0])))
             plt.close()
     return parameters_out
-
-def fit_model_map_to_df(index, prior_min=np.array([[-large_number, -1., -4., 0.1, -2.]]), prior_max=np.array([[large_number, 0.7, -1, 0.6, 0.6]]), plotting=False):
-    parameters_out = np.ones((19)) * -999.
-    galaxy = data_df[data_df['TARGETID'] == index]
-    parameters_out[0] = galaxy['TARGETID'].to_numpy()[0]
-    data_flux = galaxy[
-        ['OII_3726_FLUX', 'OII_3729_FLUX', 'HBETA_FLUX', 'OIII_4959_FLUX', 'OIII_5007_FLUX', 'NII_6548_FLUX',
-         'HALPHA_FLUX', 'NII_6584_FLUX', 'SII_6716_FLUX', 'SII_6731_FLUX']].to_numpy()[0]
-    data_flux_error = galaxy[
-        ['OII_3726_FLUX_ERR', 'OII_3729_FLUX_ERR', 'HBETA_FLUX_ERR', 'OIII_4959_FLUX_ERR', 'OIII_5007_FLUX_ERR',
-         'NII_6548_FLUX_ERR', 'HALPHA_FLUX_ERR', 'NII_6584_FLUX_ERR', 'SII_6716_FLUX_ERR',
-         'SII_6731_FLUX_ERR']].to_numpy()[0]
-
-    posterior_samples = posterior.map(x=infer_denali(data_flux,data_flux_error), save_best_every=1000, init_method='prior', show_progress_bars=False)
-    print(posterior_samples)
-    return posterior_samples.numpy()
 
 #Define number of dimensions and prior
 num_dim = 5
