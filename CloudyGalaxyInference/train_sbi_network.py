@@ -18,10 +18,10 @@ from sbi.inference import SNPE, simulate_for_sbi
 
 #import photoionization models
 path = '/Users/dirk/Documents/PhD/scripts/CloudyGalaxy/models/test_model_high_res/'
-model_labels = list(np.load(path + 'test_model_high_res_age_2Myr_unattenuated_emission_line_labels.npy'))
-model_flux = np.load(path + 'test_model_high_res_age_2Myr_unattenuated_emission_line_luminosity_file.npy')
-model_parameters = np.load(path + 'test_model_high_res_age_2Myr_unattenuated_parameters_file.npy')
-model_derived_parameters = np.load(path + 'test_model_high_res_age_2Myr_unattenuated_derived_parameters_file.npy')
+model_labels = list(np.load(path + 'full_model_high_res_age_2Myr_unattenuated_emission_line_labels.npy'))
+model_flux = np.load(path + 'full_model_high_res_age_2Myr_unattenuated_emission_line_luminosity_file.npy')
+model_parameters = np.load(path + 'full_model_high_res_age_2Myr_unattenuated_parameters_file.npy')
+model_derived_parameters = np.load(path + 'full_model_high_res_age_2Myr_unattenuated_derived_parameters_file.npy')
 
 interpolated_grid = InterpolateModelGrid(model_labels, model_flux, model_parameters, model_derived_parameters, normalize_by='H__1_656281A')
 interpolated_flux = interpolated_grid.interpolate_flux(['O__2_372603A', 'O__2_372881A', 'H__1_486133A', 'O__3_495891A', 'O__3_500684A', 'N__2_654800A', 'H__1_656281A', 'N__2_658345A', 'S__2_671644A', 'S__2_673082A'])
@@ -89,23 +89,24 @@ num_dim = 5
 prior = utils.BoxUniform(low = torch.tensor([10, -1., -4., 0.1, -2.]),
                          high= torch.tensor([400, 0.7, -1., 0.6, 0.6]))
 
+if True:
+    theta, x = simulate_for_sbi(simulation, proposal=prior, num_simulations=285120)
+    inference = SNPE(prior=prior)
+    inference = inference.append_simulations(theta, x)
 
-theta, x = simulate_for_sbi(simulation, proposal=prior, num_simulations=10000)
-inference = SNPE(prior=prior)
-inference = inference.append_simulations(theta, x)
+    save_epochs = np.arange(5,500,5)
 
-save_epochs = np.arange(5,200,5)
-
-for epoch in save_epochs:
-    if epoch==save_epochs[0]:
-        density_estimator = inference.train(max_num_epochs=epoch, resume_training=False)  # Pick `max_num_epochs` such that it does not exceed the runtime.
-    else:
-        density_estimator = inference.train(max_num_epochs=epoch, resume_training=True)  # Pick `max_num_epochs` such that it does not exceed the runtime.
-    posterior = inference.build_posterior(density_estimator)
-    torch.save(posterior.net, './sbi_inference_DESI_BGS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_train_10000/epoch_{}'.format(epoch))
-    print('SAVED EPOCH: {}'.format(epoch))
-    if inference._converged(epoch, 20):
-        break
+    for epoch in save_epochs:
+        if epoch==save_epochs[0]:
+            density_estimator = inference.train(max_num_epochs=epoch, resume_training=False)  # Pick `max_num_epochs` such that it does not exceed the runtime.
+        else:
+            density_estimator = inference.train(max_num_epochs=epoch, resume_training=True)  # Pick `max_num_epochs` such that it does not exceed the runtime.
+        posterior = inference.build_posterior(density_estimator)
+        torch.save(posterior.net, './sbi_inference_larger_grid_DESI_BGS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_train_285120/log_U_max_-1_epoch_{}'.format(epoch))
+        #print('VERSION    : {}'.format(i))
+        print('SAVED EPOCH: {}'.format(epoch))
+        if inference._converged(epoch, 20):
+            break
 
 '''
 print(prior)
