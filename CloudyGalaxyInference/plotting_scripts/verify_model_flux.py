@@ -16,15 +16,15 @@ from galactic_extinction_correction import galactic_extinction_correction, rest_
 
 #import photoionization models
 path = '/Users/dirk/Documents/PhD/scripts/CloudyGalaxy/models/test_model_high_res/'
-model_labels = list(np.load(path + 'test_model_high_res_age_2Myr_logtau_emission_line_labels.npy'))
-model_flux = np.load(path + 'test_model_high_res_age_2Myr_logtau_emission_line_luminosity_file.npy')
-model_parameters = np.load(path + 'test_model_high_res_age_2Myr_logtau_parameters_file.npy')
-model_derived_parameters = np.load(path + 'test_model_high_res_age_2Myr_logtau_derived_parameters_file.npy')
+model_labels = list(np.load(path + 'test_model_high_res_age_2Myr_unattenuated_emission_line_labels.npy'))
+model_flux = np.load(path + 'test_model_high_res_age_2Myr_unattenuated_emission_line_luminosity_file.npy')
+model_parameters = np.load(path + 'test_model_high_res_age_2Myr_unattenuated_parameters_file.npy')
+model_derived_parameters = np.load(path + 'test_model_high_res_age_2Myr_unattenuated_derived_parameters_file.npy')
 
 interpolated_grid = InterpolateModelGrid(model_labels, model_flux, model_parameters, model_derived_parameters, normalize_by='H__1_656281A')
 interpolated_flux = interpolated_grid.interpolate_flux(['O__2_372603A', 'O__2_372881A', 'H__1_486133A', 'O__3_495891A', 'O__3_500684A', 'N__2_654800A', 'H__1_656281A', 'N__2_658345A', 'S__2_671644A', 'S__2_673082A'])
 interpolated_derived_parameters = interpolated_grid.interpolate_derived_parameters()
-interpolated_logOH, interpolated_dust, interpolated_gas = interpolated_derived_parameters[1], interpolated_derived_parameters[2], interpolated_derived_parameters[3]
+interpolated_F, interpolated_logOH = interpolated_derived_parameters[0], interpolated_derived_parameters[1]
 
 line_labels = ['OII_3726', 'OII_3729', 'HBETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'HALPHA', 'NII_6584', 'SII_6716', 'SII_6731']
 line_flux_labels = [label+'_FLUX' for label in line_labels]
@@ -69,6 +69,17 @@ for i in range(len(line_labels)):
 
 print(data_df)
 
+def transmission_function(lambda_, logtau, n=-1.3):
+    '''
+    Function to calculate the transmission function. As in Charlot and Fall (2000)
+    :param lambda_: Wavelength values of the spectrum bins in Angstrom
+    :param logtau: Log optical depth at 5500 Angstrom
+    :param n: Exponent of power law. Default is -1.3 as is appropriate for birth clouds (-0.7 for general ISM).
+    :return: Transmission function for each bin in the spectrum
+    '''
+    lambda_ = np.array(lambda_)
+    return np.exp(-10**logtau * (lambda_/5500)**n)
+
 #Fill undetected emission lines with noise
 def infer_denali(flux, flux_error):
     for i in range(len(flux)):
@@ -79,11 +90,11 @@ def infer_denali(flux, flux_error):
     return torch.from_numpy(output)
 
 #Define number of dimensions and prior
-num_dim = 5
+num_dim = 6
 
 large_number=1e10
-prior = utils.BoxUniform(low = torch.tensor([-large_number, -large_number, -large_number, -large_number, -large_number]),
-                         high= torch.tensor([large_number, large_number, large_number, large_number, large_number]))
+prior = utils.BoxUniform(low = torch.tensor([-large_number, -large_number, -large_number, -large_number, -large_number, -large_number]),
+                         high= torch.tensor([large_number, large_number, large_number, large_number, large_number, large_number]))
 
 
 #Create a fake simulation to instantiate a posterior
@@ -93,13 +104,13 @@ def fake_simulation(theta):
 #Create posterior, do minimal simulations
 posterior = infer(fake_simulation, prior, 'SNPE', num_simulations=10, )
 #Replace posterior neural net with trained neural net from file
-posterior.net = torch.load('sbi_inference_model_DESI_BGS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_v7')
+posterior.net = torch.load('sbi_inference_model_DESI_BGS_extra_tau_train_1000_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_v1')
 
 data_inputs = data_df["TARGETID"]
 
 #Model fitting function
-def fit_model_to_df(index, prior_min=np.array([[-large_number, -1., -4., 0.1, -2.]]), prior_max=np.array([[large_number, 0.7, -1, 0.6, 0.6]]), plotting=False):
-    parameters_out = np.ones((46)) * -999.
+def fit_model_to_df(index, prior_min=np.array([[-large_number, -1., -4., 0.1, -2., -2]]), prior_max=np.array([[large_number, 0.7, -1, 0.6, 0.6, 0.6]]), plotting=False):
+    parameters_out = np.ones((49)) * -999.
     galaxy = data_df[data_df['TARGETID'] == index]
     parameters_out[0] = galaxy['TARGETID'].to_numpy()[0]
     data_flux = galaxy[
@@ -118,8 +129,9 @@ def fit_model_to_df(index, prior_min=np.array([[-large_number, -1., -4., 0.1, -2
 
     if np.sum(sample_mask)/len(sample_mask) > 0.5:
         masked_samples_flux = np.ones((len(masked_posterior_samples),len(interpolated_flux)))*-999.
+        transmission = transmission_function(np.expand_dims(line_wavelengths, axis=-1), np.mean(masked_posterior_samples[:, -2:], axis=-1))
         for i in range(len(interpolated_flux)):
-            masked_samples_flux[:,i] = interpolated_flux[i](masked_posterior_samples[:,1:])
+            masked_samples_flux[:,i] = interpolated_flux[i](masked_posterior_samples[:,1:-2])*transmission[i]
         print(masked_posterior_samples.shape, masked_samples_flux.shape)
         masked_posterior_samples = np.hstack([masked_posterior_samples, masked_samples_flux])
         parameters_out[1:] = np.percentile(masked_posterior_samples, [16, 50, 84], axis=0).T.flatten()
@@ -131,7 +143,7 @@ def fit_model_to_df(index, prior_min=np.array([[-large_number, -1., -4., 0.1, -2
 
 
 
-param_out = np.ones((len(data_df),46)) *-999.
+param_out = np.ones((len(data_df),49)) *-999.
 for i in range(len(data_df)):
     print(i)
     param_out[i] = fit_model_to_df(data_df['TARGETID'][i])
@@ -144,6 +156,7 @@ data_df[['Amp_out_p16', 'Amp_out_p50', 'Amp_out_p84',
          'logU_out_p16', 'logU_out_p50', 'logU_out_p84',
          'xi_out_p16', 'xi_out_p50', 'xi_out_p84',
          'logtau_out_p16', 'logtau_out_p50', 'logtau_out_p84',
+         'logtau2_out_p16', 'logtau2_out_p50', 'logtau2_out_p84',
          'OII_3726_out_p16', 'OII_3726_out_p50', 'OII_3726_out_p84',
          'OII_3729_out_p16', 'OII_3729_out_p50', 'OII_3729_out_p84',
          'HBETA_out_p16', 'HBETA_out_p50', 'HBETA_out_p84',
@@ -157,9 +170,9 @@ data_df[['Amp_out_p16', 'Amp_out_p50', 'Amp_out_p84',
          ]] = param_out[:,1:]
 
 
-data_df.to_csv('flux_in_vs_flux_out_sbi_inference_model_DESI_BGS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_v7')
+data_df.to_csv('flux_in_vs_flux_out_sbi_inference_model_DESI_BGS_extra_tau_train_1000_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_v1')
 
-data_df = pd.read_csv('flux_in_vs_flux_out_sbi_inference_model_DESI_BGS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_v7')
+data_df = pd.read_csv('flux_in_vs_flux_out_sbi_inference_model_DESI_BGS_extra_tau_train_1000_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_v1')
 
 data_df = data_df[data_df['logZ_out_p50']!=-999.]
 
@@ -172,13 +185,16 @@ for i in range(len(axs)):
     y_vals = data_df[line_labels[i]+'_out_p50']/data_df['HALPHA_out_p50']
     x_min, x_max = np.min(x_vals), np.max(x_vals)
     y_min, y_max = np.min(y_vals), np.max(y_vals)
-    axs[i].scatter(data_df[line_labels[i]+'_FLUX']/data_df['HALPHA_FLUX'], data_df[line_labels[i]+'_out_p50']/data_df['HALPHA_out_p50'], s=1, c=data_df['logtau_out_p50'])
-    axs[i].set_xlim(-0.1*x_max, 1.1*x_max)
+    axs[i].scatter(data_df[line_labels[i]+'_FLUX']/data_df['HALPHA_FLUX'], data_df[line_labels[i]+'_out_p50']/data_df['HALPHA_out_p50'], s=1, c=data_df['logU_out_p50'], vmin=-4,vmax=-1.)
+    axs[i].errorbar(data_df[line_labels[i]+'_FLUX']/data_df['HALPHA_FLUX'], data_df[line_labels[i]+'_out_p50']/data_df['HALPHA_out_p50'],
+                    xerr = np.sqrt(data_df[line_labels[i] +'_FLUX_ERR']**2 + data_df['HALPHA_FLUX_ERR']**2)/data_df['HALPHA_FLUX'],
+                    yerr = [data_df[line_labels[i]+'_out_p50']-data_df[line_labels[i]+'_out_p16'],data_df[line_labels[i]+'_out_p84']-data_df[line_labels[i]+'_out_p50']], linestyle='', linewidth=0.3,color='grey', zorder=0)
+    axs[i].set_xlim(-0.1*y_max, 1.1*y_max)
     axs[i].set_ylim(-0.1*y_max, 1.1*y_max)
     axs[i].set_title(line_labels[i])
 
-    line = np.linspace(x_min,x_max,100)
+    line = np.linspace(-0.1*y_max, 1.1*y_max,100)
     axs[i].plot(line,line,c='k')
 
 plt.tight_layout()
-plt.savefig('flux_in_vs_flux_out_sbi_inference_model_DESI_BGS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_v7.pdf')
+plt.savefig('flux_in_vs_flux_out_sbi_inference_model_DESI_BGS_extra_tau_train_1000_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_v1.pdf')
