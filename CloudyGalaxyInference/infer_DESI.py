@@ -124,7 +124,7 @@ def fit_model_to_df(index, prior_min=np.array([[-large_number, -1., -4., 0.1, -2
          'NII_6548_FLUX_ERR', 'HALPHA_FLUX_ERR', 'NII_6584_FLUX_ERR', 'SII_6716_FLUX_ERR',
          'SII_6731_FLUX_ERR']].to_numpy()[0]
 
-    posterior_samples = posterior.sample((10000,), x=infer_denali(data_flux,data_flux_error))
+    posterior_samples = posterior.sample((10000,), x=prepare_input(data_flux,data_flux_error))
     posterior_samples = posterior_samples.numpy()
 
     sample_mask = np.prod((posterior_samples > prior_min)[:,1:] & (posterior_samples < prior_max)[:,1:], axis=1)==1
