@@ -10,7 +10,7 @@ from sbi import utils as utils
 from sbi.inference import SNPE, simulate_for_sbi
 
 
-# Train model for 'OII_3726', 'OII_3729', 'HBETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'HALPHA', 'NII_6584', 'SII_6716', 'SII_6731'
+# Train model for 'HBETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'HALPHA', 'NII_6584', 'SII_6716', 'SII_6731'
 
 #import photoionization models
 path = '/Users/dirk/Documents/PhD/scripts/CloudyGalaxy/models/test_model_high_res/'
@@ -20,12 +20,12 @@ model_parameters = np.load(path + 'full_model_high_res_age_2Myr_unattenuated_par
 model_derived_parameters = np.load(path + 'full_model_high_res_age_2Myr_unattenuated_derived_parameters_file.npy')
 
 interpolated_grid = InterpolateModelGrid(model_labels, model_flux, model_parameters, model_derived_parameters, normalize_by='H__1_656281A')
-interpolated_flux = interpolated_grid.interpolate_flux(['O__2_372603A', 'O__2_372881A', 'H__1_486133A', 'O__3_495891A', 'O__3_500684A', 'N__2_654800A', 'H__1_656281A', 'N__2_658345A', 'S__2_671644A', 'S__2_673082A'])
+interpolated_flux = interpolated_grid.interpolate_flux(['H__1_486133A', 'O__3_495891A', 'O__3_500684A', 'N__2_654800A', 'H__1_656281A', 'N__2_658345A', 'S__2_671644A', 'S__2_673082A'])
 
-line_labels = ['OII_3726', 'OII_3729', 'HBETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'HALPHA', 'NII_6584', 'SII_6716', 'SII_6731']
+line_labels = ['HBETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'HALPHA', 'NII_6584', 'SII_6716', 'SII_6731']
 line_flux_labels = [label+'_FLUX' for label in line_labels]
 line_flux_ivar_labels = [label+'_FLUX_IVAR' for label in line_labels]
-line_wavelengths = [3727., 3729., 4862., 4960., 5008., 6549., 6564., 6585., 6718., 6732.]
+line_wavelengths = [4862., 4960., 5008., 6549., 6564., 6585., 6718., 6732.]
 
 denali_fastspec = Table.read("/Users/dirk/Documents/PhD/scripts/desi/data/Denali/fastspec-denali-cumulative-foreground-corr.fits", hdu=1)
 names = [name for name in denali_fastspec.colnames if len(denali_fastspec[name].shape) <= 1]
@@ -102,7 +102,7 @@ if True:
         else:
             density_estimator = inference.train(max_num_epochs=epoch, resume_training=True)  # Pick `max_num_epochs` such that it does not exceed the runtime.
         posterior = inference.build_posterior(density_estimator)
-        torch.save(posterior.net, './sbi_inference_DESI_BGS_train_1M_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_epoch_{}'.format(epoch))
+        torch.save(posterior.net, './sbi_inference_DESI_BGS_train_1M_Hb_OIII_OIII_NII_Ha_NII_SII_SII_epoch_{}'.format(epoch))
         #print('VERSION    : {}'.format(i))
         print('SAVED EPOCH: {}'.format(epoch))
         if inference._converged(epoch, 20):
