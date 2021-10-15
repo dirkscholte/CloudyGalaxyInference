@@ -27,35 +27,28 @@ interpolated_derived_parameters = interpolated_grid.interpolate_derived_paramete
 
 interpolated_F, interpolated_logOH= interpolated_derived_parameters[0], interpolated_derived_parameters[1]
 
-line_labels = ['OII_3726', 'OII_3729', 'HBETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'HALPHA', 'NII_6584', 'SII_6716', 'SII_6731']
+line_labels = ['HBETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'HALPHA', 'NII_6584', 'SII_6716', 'SII_6731']
 line_flux_labels = [label+'_FLUX' for label in line_labels]
 line_flux_ivar_labels = [label+'_FLUX_IVAR' for label in line_labels]
-line_wavelengths = [3727., 3729., 4862., 4960., 5008., 6549., 6564., 6585., 6718., 6732.]
+line_flux_err_labels = [label+'_FLUX_ERR' for label in line_labels]
+line_wavelengths = [4862., 4960., 5008., 6549., 6564., 6585., 6718., 6732.]
 
-denali_fastspec = Table.read("/Users/dirk/Documents/PhD/scripts/desi/data/Denali/fastspec-denali-cumulative.fits", hdu=1)
+denali_fastspec = Table.read("/Users/dirk/Documents/PhD/scripts/desi/data/Denali/fastspec-denali-cumulative-foreground-corr.fits", hdu=1)
 names = [name for name in denali_fastspec.colnames if len(denali_fastspec[name].shape) <= 1]
 denali_fastspec = denali_fastspec[names].to_pandas()
-denali_fastspec_hdu2 = Table.read("/Users/dirk/Documents/PhD/scripts/desi/data/Denali/fastspec-denali-cumulative.fits", hdu=2).to_pandas()
+denali_fastspec_hdu2 = Table.read("/Users/dirk/Documents/PhD/scripts/desi/data/Denali/fastspec-denali-cumulative-foreground-corr.fits", hdu=2).to_pandas()
+denali_fastspec_hdu3 = Table.read("/Users/dirk/Documents/PhD/scripts/desi/data/Denali/fastspec-denali-cumulative-foreground-corr.fits", hdu=3).to_pandas()
 
 # masking operations
 gal_mask = denali_fastspec_hdu2['SPECTYPE']==b'GALAXY'
-sn_mask = denali_fastspec['HALPHA_FLUX']*(denali_fastspec['HALPHA_FLUX_IVAR']**0.5) > 25.0
+sn_mask = denali_fastspec_hdu3['HALPHA_FLUX']*(denali_fastspec_hdu3['HALPHA_FLUX_IVAR']**0.5) > 25.0
 z_mask = denali_fastspec['CONTINUUM_Z']<0.5
-sf_mask = [np.log10(denali_fastspec["OIII_5007_FLUX"]/denali_fastspec["HBETA_FLUX"]) < 0.61*(np.log10(denali_fastspec["NII_6584_FLUX"]/denali_fastspec["HALPHA_FLUX"]) + 0.05)**-1 + 1.3][0]
-line_num_mask = np.sum(denali_fastspec[line_flux_labels].to_numpy()!=0.0, axis=1)>=4.
+sf_mask = [np.log10(denali_fastspec_hdu3["OIII_5007_FLUX"]/denali_fastspec_hdu3["HBETA_FLUX"]) < 0.61*(np.log10(denali_fastspec_hdu3["NII_6584_FLUX"]/denali_fastspec_hdu3["HALPHA_FLUX"]) - 0.05)**-1 + 1.3][0]
+line_num_mask = np.sum(denali_fastspec_hdu3[line_flux_labels].to_numpy()!=0.0, axis=1)>=4.
 
+denali_fastspec_hdu3 = denali_fastspec_hdu3[gal_mask & sn_mask & z_mask & sf_mask & line_num_mask].reset_index()
 denali_fastspec_hdu2 = denali_fastspec_hdu2[gal_mask & sn_mask & z_mask & sf_mask & line_num_mask].reset_index()
 denali_fastspec = denali_fastspec[gal_mask & sn_mask & z_mask & sf_mask & line_num_mask].reset_index()
-
-print(len(denali_fastspec))
-
-#Extinction correction
-extinction_correction_factor = np.ones((len(denali_fastspec), 10))
-
-for i in range(len(denali_fastspec)):
-    print('Extinction correction: ', i)
-    obs_wavelength = rest_to_obs_wavelength(line_wavelengths * u.angstrom, denali_fastspec['CONTINUUM_Z'][i])
-    extinction_correction_factor[i] = galactic_extinction_correction(denali_fastspec_hdu2['RA'][i]*u.degree, denali_fastspec_hdu2['DEC'][i]*u.degree, obs_wavelength, np.ones_like(line_wavelengths)*u.erg * u.cm**-2 * u.s**-1).value
 
 
 #Fill analysis dataframe
@@ -63,10 +56,8 @@ data_df = pd.DataFrame()
 data_df['TARGETID'] = denali_fastspec['TARGETID']
 
 
-for i in range(len(line_labels)):
-    print(extinction_correction_factor[i])
-    data_df[line_labels[i]+'_FLUX'] = denali_fastspec[line_labels[i]+'_FLUX'] * extinction_correction_factor[:, i]
-    data_df[line_labels[i]+'_FLUX_ERR'] = denali_fastspec[line_labels[i]+'_FLUX_IVAR']**-0.5 * extinction_correction_factor[:, i]
+data_df[line_flux_labels] = denali_fastspec_hdu3[line_flux_labels]
+data_df[line_flux_err_labels] = denali_fastspec[line_flux_ivar_labels]**-0.5
 
 print(data_df)
 
@@ -117,10 +108,10 @@ def fit_model_to_df(index, prior_min=np.array([[-large_number, -1., -4., 0.1, -2
     galaxy = data_df[data_df['TARGETID'] == index]
     parameters_out[0] = galaxy['TARGETID'].to_numpy()[0]
     data_flux = galaxy[
-        ['OII_3726_FLUX', 'OII_3729_FLUX', 'HBETA_FLUX', 'OIII_4959_FLUX', 'OIII_5007_FLUX', 'NII_6548_FLUX',
+        ['HBETA_FLUX', 'OIII_4959_FLUX', 'OIII_5007_FLUX', 'NII_6548_FLUX',
          'HALPHA_FLUX', 'NII_6584_FLUX', 'SII_6716_FLUX', 'SII_6731_FLUX']].to_numpy()[0]
     data_flux_error = galaxy[
-        ['OII_3726_FLUX_ERR', 'OII_3729_FLUX_ERR', 'HBETA_FLUX_ERR', 'OIII_4959_FLUX_ERR', 'OIII_5007_FLUX_ERR',
+        ['HBETA_FLUX_ERR', 'OIII_4959_FLUX_ERR', 'OIII_5007_FLUX_ERR',
          'NII_6548_FLUX_ERR', 'HALPHA_FLUX_ERR', 'NII_6584_FLUX_ERR', 'SII_6716_FLUX_ERR',
          'SII_6731_FLUX_ERR']].to_numpy()[0]
 
@@ -150,18 +141,18 @@ prior = utils.BoxUniform(low = torch.tensor([-large_number, -large_number, -larg
 
 #Create a fake simulation to instantiate a posterior
 def fake_simulation(theta):
-    return torch.tensor([[1.,1.,1.,1.,1.,1.,1.,1.,1.,1.]])
+    return torch.tensor([[1.,1.,1.,1.,1.,1.,1.,1.]])
 
 #Create posterior, do minimal simulations
 posterior = infer(fake_simulation, prior, 'SNPE', num_simulations=10, )
 #Replace posterior neural net with trained neural net from file
 
-posterior.net = torch.load('./sbi_inference_larger_grid_DESI_BGS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_train_285120/epoch_80'.format(i))
+posterior.net = torch.load('sbi_inference_DESI_BGS_train_1M_Hb_OIII_OIII_NII_Ha_NII_SII_SII_epoch_50')
 parameters = np.ones((len(data_df), 25)) * -999.
 for j in range(len(data_df)):
     parameters[j] = fit_model_to_df(data_df['TARGETID'][j])
     if j % 100 == 0.0:
-        np.save('sbi_fits_larger_grid_DESI_BGS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_train_285120_epoch_80.npy'.format(i), parameters)
+        np.save('sbi_fits_DESI_BGS_train_1M_Hb_OIII_OIII_NII_Ha_NII_SII_SII_epoch_50.npy', parameters)
 
-np.save('sbi_fits_larger_grid_DESI_BGS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_train_285120_epoch_80.npy'.format(i), parameters)
+np.save('sbi_fits_DESI_BGS_train_1M_Hb_OIII_OIII_NII_Ha_NII_SII_SII_epoch_50.npy', parameters)
 
