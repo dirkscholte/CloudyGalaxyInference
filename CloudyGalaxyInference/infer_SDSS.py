@@ -27,10 +27,10 @@ interpolated_derived_parameters = interpolated_grid.interpolate_derived_paramete
 
 interpolated_F, interpolated_logOH = interpolated_derived_parameters[0], interpolated_derived_parameters[1]
 
-line_labels = ['OII_3726', 'OII_3729', 'H_BETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'H_ALPHA', 'NII_6584', 'SII_6717', 'SII_6731']
+line_labels = ['OII_3726', 'OII_3729', 'H_BETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'H_ALPHA', 'NII_6584']
 line_flux_labels = [label+'_FLUX' for label in line_labels]
 line_flux_err_labels = [label+'_FLUX_ERR' for label in line_labels]
-line_wavelengths = [3727., 3729., 4862., 4960., 5008., 6549., 6564., 6585., 6718., 6732.]
+line_wavelengths = [3727., 3729., 4862., 4960., 5008., 6549., 6564., 6585.]
 
 sdss_spec_info = Table.read("/Users/dirk/Documents/PhD/scripts/catalogs/galSpecInfo-dr8.fits")
 names = [name for name in sdss_spec_info.colnames if len(sdss_spec_info[name].shape) <= 1]
@@ -46,41 +46,20 @@ print(sdss_spec_info['TARGETTYPE'])
 
 
 # masking operations
-gal_mask = sdss_spec_info['TARGETTYPE']=='GALAXY'
-sn_mask = sdss_spec_line['H_ALPHA_FLUX']/sdss_spec_line['H_ALPHA_FLUX_ERR'] > 25.0
-z_mask = sdss_spec_info['Z']<0.5
-sf_mask = ~[np.log10(sdss_spec_line["OIII_5007_FLUX"]/sdss_spec_line["H_BETA_FLUX"]) > 0.61*(np.log10(sdss_spec_line["NII_6584_FLUX"]/sdss_spec_line["H_ALPHA_FLUX"]) + 0.05)**-1 + 1.3][0]
+gal_mask = sdss_spec_info['TARGETTYPE']==b'GALAXY             '
+sn_mask = sdss_spec_line['H_ALPHA_FLUX']/sdss_spec_line['H_ALPHA_FLUX_ERR'] > 15.0
+z_mask = (sdss_spec_info['Z']>0.027) & (sdss_spec_info['Z']<0.5)
+sf_mask = ~[np.log10(sdss_spec_line["OIII_5007_FLUX"]/sdss_spec_line["H_BETA_FLUX"]) > 0.61*(np.log10(sdss_spec_line["NII_6584_FLUX"]/sdss_spec_line["H_ALPHA_FLUX"]) - 0.05)**-1 + 1.3][0]
 
-print(sdss_spec_info.columns.to_list())
-sdss_spec_info = sdss_spec_info[sn_mask&z_mask&sf_mask][0:10000]
-sdss_spec_line = sdss_spec_line[sn_mask&z_mask&sf_mask][0:10000]
-sdss_spec_extra = sdss_spec_extra[sn_mask&z_mask&sf_mask][0:10000]
-
-# Extinction correction
-extinction_correction_factor = np.ones((len(sdss_spec_info), 10))
-print(len(sdss_spec_info))
-for i in range(len(sdss_spec_info)):
-    print('Extinction correction: ', i)
-    obs_wavelength = rest_to_obs_wavelength(line_wavelengths * u.angstrom, sdss_spec_info['Z'].to_numpy()[i])
-    extinction_correction_factor[i] = galactic_extinction_correction(sdss_spec_info['RA'].to_numpy()[i] * u.degree,
-                                                                     sdss_spec_info['DEC'].to_numpy()[i] * u.degree,
-                                                                     obs_wavelength, np.ones_like(
-            line_wavelengths) * u.erg * u.cm ** -2 * u.s ** -1).value
-
-print(extinction_correction_factor)
+sdss_spec_info = sdss_spec_info[gal_mask & sn_mask & z_mask & sf_mask]
+sdss_spec_line = sdss_spec_line[gal_mask & sn_mask & z_mask & sf_mask]
+sdss_spec_extra = sdss_spec_extra[gal_mask & sn_mask & z_mask & sf_mask]
 
 # Fill analysis dataframe
 data_df = pd.DataFrame()
 data_df['TARGETID'] = sdss_spec_info['SPECOBJID']
-
-for i in range(len(line_labels)):
-    print(extinction_correction_factor[i])
-    data_df[line_labels[i] + '_FLUX'] = sdss_spec_line[line_labels[i] + '_FLUX'] * extinction_correction_factor[:, i]
-    data_df[line_labels[i] + '_FLUX_ERR'] = sdss_spec_line[
-                                                line_labels[i] + '_FLUX_ERR'] * extinction_correction_factor[:, i]
-
-print(data_df)
-
+data_df[line_flux_labels] = sdss_spec_line[line_flux_labels]
+data_df[line_flux_err_labels] = sdss_spec_line[line_flux_err_labels]
 
 def calc_log_dust(logtau):
     '''
@@ -104,30 +83,25 @@ def calc_log_gas(logZ, xi, logtau):
 
 
 # Fill undetected emission lines with noise
-def infer_denali(flux, flux_error):
+def prepare_input(flux, flux_error):
     for i in range(len(flux)):
-        if flux[i] == 0. or flux_error[i] == 0. or np.isinf(flux_error)[i]:
-            flux_error[i] = 5 * np.max(flux)
-            flux[i] = np.random.normal() * flux_error[i]
+        if flux_error[i] <= 0. or np.isinf(flux_error)[i]:
+            flux_error[i] = 0.0
+            flux[i] = 0.0
     output = np.expand_dims(np.concatenate([flux, flux_error]), axis=0)
     return torch.from_numpy(output)
 
 
 # Model fitting function
-def fit_model_to_df(index, prior_min=np.array([[-large_number, -1., -4., 0.1, -2.]]),
-                    prior_max=np.array([[large_number, 0.7, -1., 0.6, 0.6]]), plotting=False):
+def fit_model_to_df(index, prior_min=np.array([[0., -1., -4., 0.1, -2.]]),
+                    prior_max=np.array([[5., 0.7, -1., 0.6, 0.6]]), plotting=False):
     parameters_out = np.ones((25)) * -999.
     galaxy = data_df[data_df['TARGETID'] == index]
     parameters_out[0] = galaxy['TARGETID'].to_numpy()[0]
-    data_flux = galaxy[
-        ['OII_3726_FLUX', 'OII_3729_FLUX', 'H_BETA_FLUX', 'OIII_4959_FLUX', 'OIII_5007_FLUX', 'NII_6548_FLUX',
-         'H_ALPHA_FLUX', 'NII_6584_FLUX', 'SII_6717_FLUX', 'SII_6731_FLUX']].to_numpy()[0]
-    data_flux_error = galaxy[
-        ['OII_3726_FLUX_ERR', 'OII_3729_FLUX_ERR', 'H_BETA_FLUX_ERR', 'OIII_4959_FLUX_ERR', 'OIII_5007_FLUX_ERR',
-         'NII_6548_FLUX_ERR', 'H_ALPHA_FLUX_ERR', 'NII_6584_FLUX_ERR', 'SII_6717_FLUX_ERR',
-         'SII_6731_FLUX_ERR']].to_numpy()[0]
+    data_flux = galaxy[line_flux_labels].to_numpy()[0]
+    data_flux_error = galaxy[line_flux_err_labels].to_numpy()[0]
 
-    posterior_samples = posterior.sample((10000,), x=infer_denali(data_flux, data_flux_error))
+    posterior_samples = posterior.sample((10000,), x=prepare_input(data_flux, data_flux_error))
     posterior_samples = posterior_samples.numpy()
 
     sample_mask = np.prod((posterior_samples > prior_min)[:, 1:] & (posterior_samples < prior_max)[:, 1:], axis=1) == 1
@@ -150,25 +124,6 @@ def fit_model_to_df(index, prior_min=np.array([[-large_number, -1., -4., 0.1, -2
     return parameters_out
 
 
-def fit_model_map_to_df(index, prior_min=np.array([[-large_number, -1., -4., 0.1, -2.]]),
-                        prior_max=np.array([[large_number, 0.7, -1, 0.6, 0.6]]), plotting=False):
-    parameters_out = np.ones((19)) * -999.
-    galaxy = data_df[data_df['TARGETID'] == index]
-    parameters_out[0] = galaxy['TARGETID'].to_numpy()[0]
-    data_flux = galaxy[
-        ['OII_3726_FLUX', 'OII_3729_FLUX', 'H_BETA_FLUX', 'OIII_4959_FLUX', 'OIII_5007_FLUX', 'NII_6548_FLUX',
-         'H_ALPHA_FLUX', 'NII_6584_FLUX', 'SII_6717_FLUX', 'SII_6731_FLUX']].to_numpy()[0]
-    data_flux_error = galaxy[
-        ['OII_3726_FLUX_ERR', 'OII_3729_FLUX_ERR', 'H_BETA_FLUX_ERR', 'OIII_4959_FLUX_ERR', 'OIII_5007_FLUX_ERR',
-         'NII_6548_FLUX_ERR', 'H_ALPHA_FLUX_ERR', 'NII_6584_FLUX_ERR', 'SII_6717_FLUX_ERR',
-         'SII_6731_FLUX_ERR']].to_numpy()[0]
-
-    posterior_samples = posterior.map(x=infer_denali(data_flux, data_flux_error), save_best_every=1000,
-                                      init_method='prior', show_progress_bars=False)
-    print(posterior_samples)
-    return posterior_samples.numpy()
-
-
 # Define number of dimensions and prior
 num_dim = 5
 
@@ -184,22 +139,12 @@ def fake_simulation(theta):
 # Create posterior, do minimal simulations
 posterior = infer(fake_simulation, prior, 'SNPE', num_simulations=10, )
 # Replace posterior neural net with trained neural net from file
-final_epoch = [50,85,45,55,40]
+posterior.net = torch.load('sbi_inference_SDSS_train_5M_OII_OII_Hb_OIII_OIII_NII_Ha_NII_epoch_55')
+parameters = np.ones((len(data_df), 25)) * -999.
+parameters[:,0] = data_df['TARGETID'].to_numpy()
+for j in range(len(data_df)):
+    parameters[j] = fit_model_to_df(data_df['TARGETID'].iloc[j], plotting=False)
+    if j % 100 == 0.0:
+        np.save('sbi_fits_SDSS_train_5M_OII_OII_Hb_OIII_OIII_NII_Ha_NII_epoch_55.npy', parameters)
 
-for i in range(1):
-    posterior.net = torch.load(
-        './sbi_inference_larger_grid_DESI_BGS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_train_285120/log_U_max_-1_epoch_85')
-
-    data_inputs = data_df["TARGETID"]
-
-    parameters = np.ones((len(data_df), 25)) * -999.
-    for j in range(len(data_df)):
-        parameters[j] = fit_model_to_df(data_df['TARGETID'].to_numpy()[j])
-        parameters[j, 0] = data_df['TARGETID'].to_numpy()[j]
-        if j % 100 == 0.0:
-            print('Fits completed: ',j)
-            np.save(
-                '../models/sdss_fits/sbi_inference_DESI_larger_grid_SDSS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_logU_-4_to_-1_train_285120.npy', parameters)
-
-    np.save(
-        '../models/sdss_fits/sbi_inference_DESI_larger_grid_SDSS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_logU_-4_to_-1_train_285120.npy', parameters)
+np.save('sbi_fits_SDSS_train_5M_OII_OII_Hb_OIII_OIII_NII_Ha_NII_epoch_55.npy', parameters)

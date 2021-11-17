@@ -22,7 +22,7 @@ dec        = 4.4737744       # in degrees
 MUSE_cube  = fits.open("/Users/dirk/Documents/PhD/scripts/catalogs/MUSE/ADP.2021-07-16T10_20_56.494.fits")
 model_path = '/Users/dirk/Documents/PhD/scripts/CloudyGalaxy/models/test_model_high_res/'
 posterior_network = 'sbi_inference_MUSE_train_1M_Hb_OIII_OIII_NII_Ha_NII_epoch_35'
-output_file = 'sbi_fits_MUSE_train_1M_Hb_OIII_OIII_NII_Ha_NII_epoch_35.npy'
+output_file = 'test_MUSE.npy'
 
 # import photoionization models
 path = '/Users/dirk/Documents/PhD/scripts/CloudyGalaxy/models/test_model_high_res/'

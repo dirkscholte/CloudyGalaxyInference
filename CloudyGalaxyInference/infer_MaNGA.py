@@ -32,7 +32,7 @@ line_flux_err_labels = [label+'_flux_err' for label in line_labels]
 line_wavelengths = [3727., 3729., 4862., 4960., 5008., 6549., 6564., 6585., 6718., 6732.]
 
 #Fill analysis dataframe
-data_df = pd.read_csv('../../CGMangaFitting/MaNGA_8083-12702_map_uncorrected.csv')
+data_df = pd.read_csv('../../CGMangaFitting/MaNGA_7977-3703_map.csv')
 
 print(data_df.columns.to_list())
 
@@ -107,7 +107,7 @@ posterior = infer(fake_simulation, prior, 'SNPE', num_simulations=10, )
 final_epoch = [100]
 
 for i in [0]:
-    posterior.net = torch.load('./sbi_inference_larger_grid_DESI_BGS_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_train_285120/log_U_max_-1_epoch_85')
+    posterior.net = torch.load('sbi_inference_DESI_BGS_train_1M_OII_OII_Hb_OIII_OIII_NII_Ha_NII_SII_SII_epoch_70')
 
     data_inputs = data_df["1D_INDEX"]
 
@@ -119,8 +119,8 @@ for i in [0]:
         parameters[j,0] = data_df['1D_INDEX'][j]
         if j%100 == 0.0:
             np.save(
-                'MaNGA_data/sbi_fits_MaNGA_8083-12702_uncorrected.npy', parameters)
+                'MaNGA_data/sbi_fits_MaNGA_7977-3703_new.npy', parameters)
 
     np.save(
-        'MaNGA_data/sbi_fits_MaNGA_8083-12702_uncorrected.npy', parameters)
+        'MaNGA_data/sbi_fits_MaNGA_7977-3703_new.npy', parameters)
 
