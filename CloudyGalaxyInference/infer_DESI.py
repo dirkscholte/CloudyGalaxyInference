@@ -17,21 +17,21 @@ large_number=1e10
 
 #import photoionization models
 path = '/Users/dirk/Documents/PhD/scripts/CloudyGalaxy/models/test_model_high_res/'
-model_labels = list(np.load(path + 'test_model_high_res_age_2Myr_unattenuated_emission_line_labels.npy'))
-model_flux = np.load(path + 'test_model_high_res_age_2Myr_unattenuated_emission_line_luminosity_file.npy')
-model_parameters = np.load(path + 'test_model_high_res_age_2Myr_unattenuated_parameters_file.npy')
-model_derived_parameters = np.load(path + 'test_model_high_res_age_2Myr_unattenuated_derived_parameters_file.npy')
+model_labels = list(np.load(path + 'test_model_high_res_age_2Myr_depl_jenkins09_unattenuated_emission_line_labels.npy'))
+model_flux = np.load(path + 'test_model_high_res_age_2Myr_depl_jenkins09_unattenuated_emission_line_luminosity_file.npy')
+model_parameters = np.load(path + 'test_model_high_res_age_2Myr_depl_jenkins09_unattenuated_parameters_file.npy')
+model_derived_parameters = np.load(path + 'test_model_high_res_age_2Myr_depl_jenkins09_unattenuated_derived_parameters_file.npy')
 
 interpolated_grid = InterpolateModelGrid(model_labels, model_flux, model_parameters, model_derived_parameters, normalize_by='H__1_656281A')
 interpolated_derived_parameters = interpolated_grid.interpolate_derived_parameters()
 
 interpolated_F, interpolated_logOH= interpolated_derived_parameters[0], interpolated_derived_parameters[1]
 
-line_labels = ['HBETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'HALPHA', 'NII_6584', 'SII_6716', 'SII_6731']
+line_labels = ['OII_3726', 'OII_3729', 'HBETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'HALPHA', 'NII_6584']
 line_flux_labels = [label+'_FLUX' for label in line_labels]
 line_flux_ivar_labels = [label+'_FLUX_IVAR' for label in line_labels]
 line_flux_err_labels = [label+'_FLUX_ERR' for label in line_labels]
-line_wavelengths = [4862., 4960., 5008., 6549., 6564., 6585., 6718., 6732.]
+line_wavelengths = [3727., 3729., 4686., 4960., 5008., 6548., 6563., 6584.]
 
 denali_fastspec = Table.read("/Users/dirk/Documents/PhD/scripts/desi/data/Denali/fastspec-denali-cumulative-foreground-corr.fits", hdu=1)
 names = [name for name in denali_fastspec.colnames if len(denali_fastspec[name].shape) <= 1]
@@ -50,11 +50,9 @@ denali_fastspec_hdu3 = denali_fastspec_hdu3[gal_mask & sn_mask & z_mask & sf_mas
 denali_fastspec_hdu2 = denali_fastspec_hdu2[gal_mask & sn_mask & z_mask & sf_mask & line_num_mask].reset_index()
 denali_fastspec = denali_fastspec[gal_mask & sn_mask & z_mask & sf_mask & line_num_mask].reset_index()
 
-
 #Fill analysis dataframe
 data_df = pd.DataFrame()
 data_df['TARGETID'] = denali_fastspec['TARGETID']
-
 
 data_df[line_flux_labels] = denali_fastspec_hdu3[line_flux_labels]
 data_df[line_flux_err_labels] = denali_fastspec[line_flux_ivar_labels]**-0.5
@@ -94,6 +92,20 @@ def prepare_input(flux, flux_error):
     output = np.expand_dims(np.concatenate([flux, flux_error]), axis=0)
     return torch.from_numpy(output)
 
+#def prepare_input(flux, flux_error):
+    '''
+    Function to fill undetected emission lines with noise
+    :param flux: emission line flux array
+    :param flux_error: emission line flux error array
+    :return:
+    '''
+#    for i in range(len(flux)):
+#        if flux_error[i] == 0. or np.isinf(flux_error)[i]:
+#            flux_error[i] = 5 * np.max(flux)
+#            #flux[i] = np.random.normal() * flux_error[i]
+#    output = np.expand_dims(np.concatenate([flux, flux_error]), axis=0)
+#    return torch.from_numpy(output)
+
 #Model fitting function
 def fit_model_to_df(index, prior_min=np.array([[-large_number, -1., -4., 0.1, -2.]]), prior_max=np.array([[large_number, 0.7, -1.0, 0.6, 0.6]]), plotting=False):
     '''
@@ -107,13 +119,8 @@ def fit_model_to_df(index, prior_min=np.array([[-large_number, -1., -4., 0.1, -2
     parameters_out = np.ones((25)) * -999.
     galaxy = data_df[data_df['TARGETID'] == index]
     parameters_out[0] = galaxy['TARGETID'].to_numpy()[0]
-    data_flux = galaxy[
-        ['HBETA_FLUX', 'OIII_4959_FLUX', 'OIII_5007_FLUX', 'NII_6548_FLUX',
-         'HALPHA_FLUX', 'NII_6584_FLUX', 'SII_6716_FLUX', 'SII_6731_FLUX']].to_numpy()[0]
-    data_flux_error = galaxy[
-        ['HBETA_FLUX_ERR', 'OIII_4959_FLUX_ERR', 'OIII_5007_FLUX_ERR',
-         'NII_6548_FLUX_ERR', 'HALPHA_FLUX_ERR', 'NII_6584_FLUX_ERR', 'SII_6716_FLUX_ERR',
-         'SII_6731_FLUX_ERR']].to_numpy()[0]
+    data_flux = galaxy[line_flux_labels].to_numpy()[0]
+    data_flux_error = galaxy[line_flux_err_labels].to_numpy()[0]
 
     posterior_samples = posterior.sample((10000,), x=prepare_input(data_flux,data_flux_error))
     posterior_samples = posterior_samples.numpy()
@@ -141,18 +148,19 @@ prior = utils.BoxUniform(low = torch.tensor([-large_number, -large_number, -larg
 
 #Create a fake simulation to instantiate a posterior
 def fake_simulation(theta):
-    return torch.tensor([[1.,1.,1.,1.,1.,1.,1.,1.]])
+    return torch.tensor([[1.,1.,1.,1.,1.,1.,1.,1., 1., 1.,1.,1.,1.,1.,1.,1.]])
 
 #Create posterior, do minimal simulations
 posterior = infer(fake_simulation, prior, 'SNPE', num_simulations=10, )
 #Replace posterior neural net with trained neural net from file
 
-posterior.net = torch.load('sbi_inference_DESI_BGS_train_1M_Hb_OIII_OIII_NII_Ha_NII_SII_SII_epoch_50')
+posterior.net = torch.load('sbi_inference_jenkins_depl_DESI_BGS_train_1M_OII_OII_Hb_OIII_OIII_NII_Ha_NII_epoch_60')
 parameters = np.ones((len(data_df), 25)) * -999.
+parameters[:,0] = data_df['TARGETID']
 for j in range(len(data_df)):
-    parameters[j] = fit_model_to_df(data_df['TARGETID'][j])
+    parameters[j] = fit_model_to_df(data_df['TARGETID'][j], plotting=False)
     if j % 100 == 0.0:
-        np.save('sbi_fits_DESI_BGS_train_1M_Hb_OIII_OIII_NII_Ha_NII_SII_SII_epoch_50.npy', parameters)
+        np.save('sbi_fits_jenkins_depl_DESI_BGS_train_1M_OII_OII_Hb_OIII_OIII_NII_Ha_NII_epoch_60.npy', parameters)
 
-np.save('sbi_fits_DESI_BGS_train_1M_Hb_OIII_OIII_NII_Ha_NII_SII_SII_epoch_50.npy', parameters)
+np.save('sbi_fits_jenkins_depl_DESI_BGS_train_1M_OII_OII_Hb_OIII_OIII_NII_Ha_NII_epoch_60.npy', parameters)
 
