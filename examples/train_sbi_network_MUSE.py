@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
 
-from interpolate_model_grid import InterpolateModelGrid
-from gaussian_noise_model import GaussianNoiseModelMUSE
-from simulate import simulation_MUSE
-from train import train_MUSE
+from CloudyGalaxyInference.interpolate_model_grid import InterpolateModelGrid
+from CloudyGalaxyInference.gaussian_noise_model import GaussianNoiseModelMUSE
+from CloudyGalaxyInference.simulate import simulation_MUSE
+from CloudyGalaxyInference.train import train_MUSE
 
 redshift   = 0.005224
 model_path = '/Users/dirk/Documents/PhD/scripts/CloudyGalaxy/models/test_model_high_res/'

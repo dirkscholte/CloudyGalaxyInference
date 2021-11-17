@@ -4,9 +4,9 @@ import pandas as pd
 import torch
 from sbi import utils as utils
 from sbi.inference.base import infer
-from infer import fit_model_to_data, fit_model_to_dataframe
 
-from interpolate_model_grid import InterpolateModelGrid
+from CloudyGalaxyInference.infer import fit_model_to_data, fit_model_to_dataframe
+from CloudyGalaxyInference.interpolate_model_grid import InterpolateModelGrid
 
 data_df = pd.read_csv('../CloudyGalaxyInference/MUSE_df_NGC_4303.csv')
 data_df['SPAXELID'] = np.arange(len(data_df))

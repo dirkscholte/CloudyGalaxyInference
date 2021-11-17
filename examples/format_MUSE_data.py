@@ -3,7 +3,7 @@ import pandas as pd
 from astropy.io import fits
 
 import astropy.units as u
-from galactic_extinction_correction import galactic_extinction_correction
+from CloudyGalaxyInference.galactic_extinction_correction import galactic_extinction_correction
 
 # Inputs
 redshift   = 0.005224
