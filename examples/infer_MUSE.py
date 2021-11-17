@@ -8,7 +8,7 @@ from infer import fit_model_to_data, fit_model_to_dataframe
 
 from interpolate_model_grid import InterpolateModelGrid
 
-data_df = pd.read_csv('MUSE_df_NGC_4303.csv')
+data_df = pd.read_csv('../CloudyGalaxyInference/MUSE_df_NGC_4303.csv')
 data_df['SPAXELID'] = np.arange(len(data_df))
 model_path = '/Users/dirk/Documents/PhD/scripts/CloudyGalaxy/models/test_model_high_res/'
 posterior_network = 'sbi_inference_MUSE_train_1M_Hb_OIII_OIII_NII_Ha_NII_epoch_35'

@@ -15,7 +15,7 @@ line_flux_err_labels = [label+'_FLUX_ERR' for label in line_labels]
 line_wavelengths = np.array([4862., 4960., 5008., 6549., 6564., 6585.])
 obs_line_wavelength = line_wavelengths * (1 + redshift)
 
-MUSE_df = pd.read_csv('MUSE_df_NGC_4303.csv')
+MUSE_df = pd.read_csv('../CloudyGalaxyInference/MUSE_df_NGC_4303.csv')
 
 # Import photoionization models
 model_labels = list(np.load(model_path + 'full_model_high_res_age_2Myr_unattenuated_emission_line_labels.npy'))
