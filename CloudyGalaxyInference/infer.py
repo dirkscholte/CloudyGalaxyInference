@@ -7,16 +7,16 @@ from sbi import utils as utils
 from sbi.inference.base import infer
 large_number = 1e10
 
-def calc_log_dust(logtau):
+def calc_log_dust(tau):
     '''
     Calculate the dust surface density as in Brinchmann et al. 2013
     :param logtau: Log optical depth at 5500 Angstrom
     :return: Log of dust surface density
     '''
-    return np.log10(0.2 * 10 ** logtau)
+    return np.log10(0.2 * tau)
 
 
-def calc_log_gas(logZ, xi, logtau):
+def calc_log_gas(logZ, xi, tau):
     '''
     Calculate the gas surface density as in Brinchmann et al. 2013
     :param logZ: Log metallicity in units of solar metallicity
@@ -25,7 +25,7 @@ def calc_log_gas(logZ, xi, logtau):
     :return: Log of gas surface density
     '''
     Zsun = 0.0142  # Asplund (2009) photospheric mass fraction
-    return np.log10(0.2 * 10 ** logtau / (xi * 10 ** logZ * Zsun))
+    return np.log10(0.2 * tau / (xi * 10 ** logZ * Zsun))
 
 def prepare_input(flux, flux_error):
     '''
@@ -41,7 +41,7 @@ def prepare_input(flux, flux_error):
     output = np.expand_dims(np.concatenate([flux, flux_error]), axis=0)
     return torch.from_numpy(output)
 
-def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_logOH, num_samples=10000, prior_lower_boundary=[0, -1., -4., 0.1, -2.], prior_upper_boundary=[6, 0.7, -1., 0.6, 0.6], plotting=False, plot_name='test'):
+def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_logOH, num_samples=10000, prior_lower_boundary=[0., -1., -4., 0.1, 0.01], prior_upper_boundary=[6., 0.7, -1., 0.6, 4.0], plotting=False, plot_name='test'):
     '''
     Inference procedure to derive the 16, 50, 84 percentile intervals of the sbi_posterior parameters.
     :param sbi_posterior: Trained SBI posterior
@@ -79,7 +79,7 @@ def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_lo
     return parameters_out
 
 
-def fit_model_to_dataframe(posterior_network, dataframe, identifier_column, line_flux_labels, line_flux_error_labels, output_file, interpolated_logOH, num_samples=10000, prior_lower_boundary=[0, -1., -4., 0.1, -2.], prior_upper_boundary=[6, 0.7, -1., 0.6, 0.6], plotting=False, plot_name='test'):
+def fit_model_to_dataframe(posterior_network, dataframe, identifier_column, line_flux_labels, line_flux_error_labels, output_file, interpolated_logOH, num_samples=10000, prior_lower_boundary=[0., -1., -4., 0.1, 0.01], prior_upper_boundary=[6., 0.7, -1., 0.6, 4.0], plotting=False, plot_name='test'):
     '''
     Inference procedure to derive the 16, 50, 84 percentile intervals of the sbi_posterior parameters for an entire dataframe.
     :param posterior_network: SBI posterior neural network (torch)
@@ -101,7 +101,7 @@ def fit_model_to_dataframe(posterior_network, dataframe, identifier_column, line
 
     # Create a fake simulation to instantiate a posterior
     def fake_simulation(theta):
-        return torch.tensor([[1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]])
+        return np.random.normal()*torch.tensor([[1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]])
 
     # Create posterior, do minimal simulations
     posterior = infer(fake_simulation, prior, 'SNPE', num_simulations=10, )

@@ -10,11 +10,11 @@ redshift   = 0.005224
 ra         = 185.4788625     # in degrees
 dec        = 4.4737744       # in degrees
 line_wavelengths = np.array([4862., 4960., 5008., 6549., 6564., 6585.])
-obs_line_wavelength = line_wavelengths * (1 + redshift)
+obs_line_wavelengths = line_wavelengths * (1 + redshift)
 MUSE_cube  = fits.open("/Users/dirk/Documents/PhD/scripts/catalogs/MUSE/ADP.2021-07-16T10_20_56.494.fits") #NGC 4303
 
 # Calculations of correction factors due to galactic foreground dust attenuation. Using the O'Donnell 94 correction scheme and SFD galactic dust maps.
-foreground_correction_factors = galactic_extinction_correction(ra*u.degree, dec*u.degree, line_wavelengths*u.angstrom, np.ones_like(line_wavelengths)*(u.erg * u.cm**-2 * u.s**-1)).value
+foreground_correction_factors = galactic_extinction_correction(ra*u.degree, dec*u.degree, obs_line_wavelengths*u.angstrom, np.ones_like(line_wavelengths)*(u.erg * u.cm**-2 * u.s**-1)).value
 
 cube_dims = MUSE_cube[6].data.shape
 MUSE_df = pd.DataFrame()
@@ -42,4 +42,4 @@ MUSE_df['NII_6584_FLUX_ERR'] = MUSE_cube[37].data.reshape(-1) * foreground_corre
 
 MUSE_df=MUSE_df.fillna(0.0)
 
-MUSE_df.to_csv('MUSE_df_NGC_4303.csv')
+MUSE_df.to_csv('./MUSE_df_NGC_4303.csv')

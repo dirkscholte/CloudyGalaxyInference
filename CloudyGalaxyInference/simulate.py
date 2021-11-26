@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-def transmission_function(lambda_, logtau, n=-1.3):
+def transmission_function(lambda_, tau, n=-1.3):
     '''
     Function to calculate the transmission function. As in Charlot and Fall (2000)
     :param lambda_: Wavelength values of the spectrum bins in Angstrom
@@ -10,7 +10,7 @@ def transmission_function(lambda_, logtau, n=-1.3):
     :return: Transmission function for each bin in the spectrum
     '''
     lambda_ = np.array(lambda_)
-    return np.exp(-10**logtau * (lambda_/5500)**n)
+    return np.exp(-tau * (lambda_/5500)**n)
 
 def simulation_MUSE(theta, line_wavelengths, interpolated_flux, redshift, gaussian_noise_model):
     '''
@@ -26,7 +26,7 @@ def simulation_MUSE(theta, line_wavelengths, interpolated_flux, redshift, gaussi
     transmission = transmission_function(line_wavelengths, theta[-1])
     model_line_flux = np.zeros((len(interpolated_flux)))
     for i in range(len(interpolated_flux)):
-        model_line_flux[i] = 10**theta[0] * interpolated_flux[i](theta[1:-1])*transmission[i]
+        model_line_flux[i] = 10**theta[0] * interpolated_flux[i](theta[1:-1]) * transmission[i]
     if redshift=='random':
         redshift = np.random.uniform(low=0.0, high=0.5)
     line_flux, line_flux_error = gaussian_noise_model.add_gaussian_noise(model_line_flux, (1 + redshift) * line_wavelengths, np.ones_like(line_wavelengths) * np.random.uniform(low=0.0, high=100.0))

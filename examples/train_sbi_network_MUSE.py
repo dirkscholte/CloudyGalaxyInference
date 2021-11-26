@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+import torch
+torch.set_num_threads(4)
 
 from CloudyGalaxyInference.interpolate_model_grid import InterpolateModelGrid
 from CloudyGalaxyInference.gaussian_noise_model import GaussianNoiseModelMUSE
@@ -8,6 +10,8 @@ from CloudyGalaxyInference.train import train_MUSE
 
 redshift   = 0.005224
 model_path = '/Users/dirk/Documents/PhD/scripts/CloudyGalaxy/models/test_model_high_res/'
+model_name = 'test_model_MUSE_1M_lintau_'
+num_simulations = 1000000
 
 line_labels = ['H_BETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'H_ALPHA', 'NII_6584']
 line_flux_labels = [label+'_FLUX' for label in line_labels]
@@ -15,7 +19,7 @@ line_flux_err_labels = [label+'_FLUX_ERR' for label in line_labels]
 line_wavelengths = np.array([4862., 4960., 5008., 6549., 6564., 6585.])
 obs_line_wavelength = line_wavelengths * (1 + redshift)
 
-MUSE_df = pd.read_csv('../CloudyGalaxyInference/MUSE_df_NGC_4303.csv')
+MUSE_df = pd.read_csv('./MUSE_df_NGC_4303.csv')
 
 # Import photoionization models
 model_labels = list(np.load(model_path + 'full_model_high_res_age_2Myr_unattenuated_emission_line_labels.npy'))
@@ -33,4 +37,4 @@ gaussian_noise_model = GaussianNoiseModelMUSE(MUSE_df[line_flux_err_labels].to_n
 def simulation(theta):
     return simulation_MUSE(theta, line_wavelengths, interpolated_flux, redshift, gaussian_noise_model)
 
-train_MUSE(simulation, 'test_model_MUSE', num_simulations=1e6)
+train_MUSE(simulation, model_name, num_simulations=num_simulations)
