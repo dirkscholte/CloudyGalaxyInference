@@ -1,3 +1,4 @@
+import pandas as pd
 import astropy.units as u
 from dust_extinction.parameter_averages import O94
 from dustmaps.sfd import SFDQuery
