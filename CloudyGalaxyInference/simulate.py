@@ -27,8 +27,11 @@ def simulation_MUSE(theta, line_wavelengths, interpolated_flux, redshifts, gauss
     model_line_flux = np.zeros((len(interpolated_flux)))
     for i in range(len(interpolated_flux)):
         model_line_flux[i] = 10**theta[0] * interpolated_flux[i](theta[1:-1]) * transmission[i]
-    if redshifts=='random':
-        redshift = np.random.uniform(low=0.0, high=0.5)
+    if isinstance(redshifts, str):
+        if redshifts=='random':
+            redshift = np.random.uniform(low=0.0, high=0.5)
+        else:
+            print('This redshift input is not supported!')
     else:
         redshift = np.random.choice(redshifts)
     line_flux, line_flux_error = gaussian_noise_model.add_gaussian_noise(model_line_flux, (1 + redshift) * line_wavelengths, np.ones_like(line_wavelengths) * np.random.uniform(low=0.0, high=100.0))
