@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from scipy.special import exp1
 
 def transmission_function(lambda_, tau, n=-1.3):
     '''
@@ -12,7 +13,11 @@ def transmission_function(lambda_, tau, n=-1.3):
     lambda_ = np.array(lambda_)
     return np.exp(-tau * (lambda_/5500)**n)
 
-def simulation_MUSE(theta, line_wavelengths, interpolated_flux, redshifts, gaussian_noise_model):
+def transmission_function_slab(lambda_, tau, n=-1.3):
+    tau_lambda = tau * (lambda_/5500)**n
+    return 1/(2*tau_lambda) * (1 + (tau_lambda - 1) * np.exp(-tau_lambda) * exp1(tau_lambda))
+
+def simulation_MUSE(theta, line_wavelengths, interpolated_flux, redshifts, gaussian_noise_model, dust_geometry='foreground_screen'):
     '''
     Function to simulate emission line observations from photoionization models and a Gaussian noise model.
     :param theta: Input vector containing the free parameters of the model (Amplitude, Z, U, xi, tau)
@@ -23,7 +28,10 @@ def simulation_MUSE(theta, line_wavelengths, interpolated_flux, redshifts, gauss
     :return:
     '''
     theta = theta.numpy()[0]
-    transmission = transmission_function(line_wavelengths, theta[-1])
+    if dust_geometry=='foreground_screen':
+        transmission = transmission_function(line_wavelengths, theta[-1])
+    elif dust_geometry=='slab':
+        transmission = transmission_function_slab(line_wavelengths, theta[-1])
     model_line_flux = np.zeros((len(interpolated_flux)))
     for i in range(len(interpolated_flux)):
         model_line_flux[i] = 10**theta[0] * interpolated_flux[i](theta[1:-1]) * transmission[i]
