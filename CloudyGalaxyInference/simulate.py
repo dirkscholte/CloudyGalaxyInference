@@ -13,9 +13,9 @@ def transmission_function(lambda_, tau, n=-1.3):
     lambda_ = np.array(lambda_)
     return np.exp(-tau * (lambda_/5500)**n)
 
-def transmission_function_slab(lambda_, tau, n=-1.3):
-    tau_lambda = tau * (lambda_/5500)**n
-    return 1/(2*tau_lambda) * (1 + (tau_lambda - 1) * np.exp(-tau_lambda) * exp1(tau_lambda))
+def transmission_function_slab(wl, tauV, n=-1.3):
+    tau_wl = tauV * (wl/5500.)**n
+    return 1/(2*tau_wl) * (1 + (tau_wl - 1) * np.exp(-tau_wl) - tau_wl**2 * exp1(tau_wl))
 
 def simulation_MUSE(theta, line_wavelengths, interpolated_flux, redshifts, gaussian_noise_model, dust_geometry='foreground_screen'):
     '''
