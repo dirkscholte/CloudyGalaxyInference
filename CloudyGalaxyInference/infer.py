@@ -61,7 +61,8 @@ def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_lo
     sample_mask = np.prod((posterior_samples > prior_lower_boundary)[:, 1:] & (posterior_samples < prior_upper_boundary)[:, 1:], axis=1) == 1
     masked_posterior_samples = posterior_samples[sample_mask]
 
-    parameters_out = np.ones((24)) * -999.
+    parameters_out = np.ones((25)) * -999.
+    parameters_out[-1] = np.sum(sample_mask) / len(sample_mask)
     if np.sum(sample_mask) / len(sample_mask) > 0.5:
         samples_logOH = interpolated_logOH(masked_posterior_samples[:, 1:-1])
         samples_dust = calc_log_dust(masked_posterior_samples[:, 4])
@@ -70,7 +71,7 @@ def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_lo
         masked_posterior_samples = np.hstack(
             [masked_posterior_samples, np.expand_dims(samples_logOH, axis=-1), np.expand_dims(samples_dust, axis=-1),
              np.expand_dims(samples_gas, axis=-1)])
-        parameters_out = np.percentile(masked_posterior_samples, [16, 50, 84], axis=0).T.flatten()
+        parameters_out[:-1] = np.percentile(masked_posterior_samples, [16, 50, 84], axis=0).T.flatten()
         if plotting:
             corner.corner(masked_posterior_samples, show_titles=True, quantiles=[0.16, 0.5, 0.84],
                           labels=['Amplitude', 'Z', 'U', '$\\xi$', '$\\tau$', 'log(O/H)', 'log(dust)', 'log(gas)'])
@@ -107,7 +108,7 @@ def fit_model_to_dataframe(posterior_network, dataframe, identifier_column, line
     posterior = infer(fake_simulation, prior, 'SNPE', num_simulations=10, )
     # Replace posterior neural net with trained neural net from file
     posterior.net = torch.load(posterior_network)
-    parameters = np.ones((len(dataframe), 25)) * -999.
+    parameters = np.ones((len(dataframe), 26)) * -999.
     parameters[:,0] = dataframe[identifier_column].to_numpy()
     for i in range(len(dataframe)):
         parameters[i,1:] = fit_model_to_data(posterior, dataframe[line_flux_labels].to_numpy()[i], dataframe[line_flux_error_labels].to_numpy()[i], interpolated_logOH, num_samples=num_samples, prior_lower_boundary=prior_lower_boundary, prior_upper_boundary=prior_upper_boundary, plotting=plotting, plot_name=plot_name+'_'+str(i))
