@@ -102,7 +102,7 @@ def fit_model_to_dataframe(posterior_network, dataframe, identifier_column, line
 
     # Create a fake simulation to instantiate a posterior
     def fake_simulation(theta):
-        return np.random.normal()*torch.tensor([[1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]])
+        return np.random.normal()*torch.tensor([np.ones(2*len(line_flux_labels)).tolist()])
 
     # Create posterior, do minimal simulations
     posterior = infer(fake_simulation, prior, 'SNPE', num_simulations=10, )
