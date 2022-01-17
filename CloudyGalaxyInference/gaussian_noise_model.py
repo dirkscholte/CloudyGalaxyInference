@@ -83,8 +83,7 @@ class GaussianNoiseModelMUSE():
         plt.plot(wl_sample, self.noise_model(np.stack([wl_sample, np.ones_like(wl_sample)*50.], axis=1)), linewidth=1, alpha=0.2)
         plt.plot(wl_sample, self.noise_model(np.stack([wl_sample, np.ones_like(wl_sample)*84.], axis=1)), linewidth=1, alpha=0.2)
         plt.plot(wl_sample, self.noise_model(np.stack([wl_sample, np.ones_like(wl_sample)*95.4], axis=1)), linewidth=1, alpha=0.2)
-        plt.show()
-
+        plt.savefig('gaussian_noise_model_diagnostics.png')
 
 def running_percentile(x_sample, x, y, width, percentiles=[16,50,84], minimum_data=10, fill_value=np.nan):
     percentiles_out = np.zeros((len(x_sample), len(percentiles))) * fill_value
@@ -122,8 +121,7 @@ class GaussianNoiseModelWavelength():
         plt.plot(wl_sample, self.noise_model(np.stack([wl_sample, np.ones_like(wl_sample)*50.], axis=1)), linewidth=1, alpha=0.2)
         plt.plot(wl_sample, self.noise_model(np.stack([wl_sample, np.ones_like(wl_sample)*84.], axis=1)), linewidth=1, alpha=0.2)
         plt.plot(wl_sample, self.noise_model(np.stack([wl_sample, np.ones_like(wl_sample)*95.4], axis=1)), linewidth=1, alpha=0.2)
-        plt.show()
-
+        plt.savefig('gaussian_noise_model_diagnostics.png')
 
 def running_percentile(x_sample, x, y, width, percentiles=[16,50,84], minimum_data=10, fill_value=np.nan):
     percentiles_out = np.zeros((len(x_sample), len(percentiles))) * fill_value
