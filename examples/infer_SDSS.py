@@ -1,4 +1,5 @@
 import numpy as np
+from astropy.table import Table
 import pandas as pd
 import torch
 torch.set_num_threads(4)
@@ -11,12 +12,14 @@ data_path = "/Users/dirk/Documents/PhD/scripts/catalogs/"
 sdss_spec_info = Table.read(data_path+"galSpecInfo-dr8.fits")
 names = [name for name in sdss_spec_info.colnames if len(sdss_spec_info[name].shape) <= 1]
 sdss_spec_info = sdss_spec_info[names].to_pandas()
+sdss_spec_info = sdss_spec_info[sdss_spec_info['SPECOBJID']!=b'                   ']
 sdss_spec_line = Table.read(data_path+"galSpecLine-dr8.fits").to_pandas()
+sdss_spec_line = sdss_spec_line[sdss_spec_line['SPECOBJID']!=b'                   ']
 
 # Specify location of photoionization models and output data
 model_path = '/Users/dirk/Documents/PhD/scripts/CloudyGalaxy/models/test_model_high_res/'
-posterior_network = 'test_model_MUSE_1M_lintau_epoch_45'
-output_file = './test_MUSE_1M_lintau'
+posterior_network = 'test_model_SDSS_10k_lintau_epoch_80'
+output_file = './test_SDSS_10k_lintau'
 
 line_labels = ['OII_3726', 'OII_3729', 'H_BETA', 'OIII_4959', 'OIII_5007', 'NII_6548', 'H_ALPHA', 'NII_6584']
 line_flux_labels = [label+'_FLUX' for label in line_labels]

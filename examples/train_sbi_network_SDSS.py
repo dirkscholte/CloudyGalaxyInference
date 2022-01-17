@@ -6,8 +6,8 @@ torch.set_num_threads(4)
 
 from CloudyGalaxyInference.interpolate_model_grid import InterpolateModelGrid
 from CloudyGalaxyInference.gaussian_noise_model import GaussianNoiseModelWavelength
-from CloudyGalaxyInference.simulate import simulation_MUSE
-from CloudyGalaxyInference.train import train_MUSE
+from CloudyGalaxyInference.simulate import simulation_SDSS
+from CloudyGalaxyInference.train import train
 
 # SDSS data
 data_path = "/Users/dirk/Documents/PhD/scripts/catalogs/"
@@ -26,8 +26,8 @@ obs_line_wavelength = np.expand_dims(line_wavelengths, axis=0) * (1 + np.expand_
 
 # Specify location of photoionization models and output models
 model_path = '/Users/dirk/Documents/PhD/scripts/CloudyGalaxy/models/test_model_high_res/'
-model_name = 'test_model_SDSS_1M_lintau_'
-num_simulations = 1000000
+model_name = 'test_model_SDSS_10k_lintau_'
+num_simulations = 10000
 
 # Import photoionization models
 model_labels = list(np.load(model_path + 'full_model_high_res_age_2Myr_unattenuated_emission_line_labels.npy'))
@@ -43,6 +43,6 @@ interpolated_flux = interpolated_grid.interpolate_flux(['O__2_372603A', 'O__2_37
 gaussian_noise_model = GaussianNoiseModelWavelength(sdss_spec_line[line_flux_err_labels].to_numpy().reshape(-1), obs_line_wavelength.reshape(-1))
 
 def simulation(theta):
-    return simulation_MUSE(theta, line_wavelengths, interpolated_flux, 'random', gaussian_noise_model)
+    return simulation_SDSS(theta, line_wavelengths, interpolated_flux, 'random', gaussian_noise_model)
 
-train_MUSE(simulation, model_name, num_simulations=num_simulations)
+train(simulation, model_name, num_simulations=num_simulations)
