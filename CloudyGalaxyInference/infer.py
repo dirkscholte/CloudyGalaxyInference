@@ -57,6 +57,8 @@ def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_lo
     '''
     posterior_samples = sbi_posterior.sample((num_samples,), x=prepare_input(data_flux, data_flux_error))
     posterior_samples = posterior_samples.numpy()
+    if logtau:
+        posterior_samples[:, 4] = 10**posterior_samples[:, 4]
 
     sample_mask = np.prod((posterior_samples > prior_lower_boundary)[:, 1:] & (posterior_samples < prior_upper_boundary)[:, 1:], axis=1) == 1
     masked_posterior_samples = posterior_samples[sample_mask]
@@ -65,14 +67,9 @@ def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_lo
     parameters_out[-1] = np.sum(sample_mask) / len(sample_mask)
     if np.sum(sample_mask) / len(sample_mask) > 0.5:
         samples_logOH = interpolated_logOH(masked_posterior_samples[:, 1:-1])
-        if logtau:
-            samples_dust = calc_log_dust(10**masked_posterior_samples[:, 4])
-            samples_gas = calc_log_gas(masked_posterior_samples[:, 1], masked_posterior_samples[:, 3],
-                                       10**masked_posterior_samples[:, 4])
-        else:
-            samples_dust = calc_log_dust(masked_posterior_samples[:, 4])
-            samples_gas = calc_log_gas(masked_posterior_samples[:, 1], masked_posterior_samples[:, 3],
-                                       masked_posterior_samples[:, 4])
+        samples_dust = calc_log_dust(masked_posterior_samples[:, 4])
+        samples_gas = calc_log_gas(masked_posterior_samples[:, 1], masked_posterior_samples[:, 3],
+                                   masked_posterior_samples[:, 4])
         masked_posterior_samples = np.hstack(
             [masked_posterior_samples, np.expand_dims(samples_logOH, axis=-1), np.expand_dims(samples_dust, axis=-1),
              np.expand_dims(samples_gas, axis=-1)])
