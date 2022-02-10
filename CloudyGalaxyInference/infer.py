@@ -41,7 +41,7 @@ def prepare_input(flux, flux_error):
     output = np.expand_dims(np.concatenate([flux, flux_error]), axis=0)
     return torch.from_numpy(output)
 
-def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_logOH, num_samples=10000, prior_lower_boundary=[0., -1., -4., 0.1, 0.01], prior_upper_boundary=[6., 0.7, -1., 0.6, 4.0], plotting=False, plot_name='test'):
+def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_logOH, num_samples=10000, prior_lower_boundary=[0., -1., -4., 0.1, 0.01], prior_upper_boundary=[6., 0.7, -1., 0.6, 4.0], plotting=False, plot_name='test', logtau=False):
     '''
     Inference procedure to derive the 16, 50, 84 percentile intervals of the sbi_posterior parameters.
     :param sbi_posterior: Trained SBI posterior
@@ -65,9 +65,14 @@ def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_lo
     parameters_out[-1] = np.sum(sample_mask) / len(sample_mask)
     if np.sum(sample_mask) / len(sample_mask) > 0.5:
         samples_logOH = interpolated_logOH(masked_posterior_samples[:, 1:-1])
-        samples_dust = calc_log_dust(masked_posterior_samples[:, 4])
-        samples_gas = calc_log_gas(masked_posterior_samples[:, 1], masked_posterior_samples[:, 3],
-                                   masked_posterior_samples[:, 4])
+        if logtau:
+            samples_dust = calc_log_dust(10**masked_posterior_samples[:, 4])
+            samples_gas = calc_log_gas(masked_posterior_samples[:, 1], masked_posterior_samples[:, 3],
+                                       10**masked_posterior_samples[:, 4])
+        else:
+            samples_dust = calc_log_dust(masked_posterior_samples[:, 4])
+            samples_gas = calc_log_gas(masked_posterior_samples[:, 1], masked_posterior_samples[:, 3],
+                                       masked_posterior_samples[:, 4])
         masked_posterior_samples = np.hstack(
             [masked_posterior_samples, np.expand_dims(samples_logOH, axis=-1), np.expand_dims(samples_dust, axis=-1),
              np.expand_dims(samples_gas, axis=-1)])
@@ -80,7 +85,7 @@ def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_lo
     return parameters_out
 
 
-def fit_model_to_dataframe(posterior_network, dataframe, identifier_column, line_flux_labels, line_flux_error_labels, output_file, interpolated_logOH, num_samples=10000, prior_lower_boundary=[0., -1., -4., 0.1, 0.01], prior_upper_boundary=[6., 0.7, -1., 0.6, 4.0], plotting=False, plot_name='test'):
+def fit_model_to_dataframe(posterior_network, dataframe, identifier_column, line_flux_labels, line_flux_error_labels, output_file, interpolated_logOH, num_samples=10000, prior_lower_boundary=[0., -1., -4., 0.1, 0.01], prior_upper_boundary=[6., 0.7, -1., 0.6, 4.0], plotting=False, plot_name='test', logtau=False):
     '''
     Inference procedure to derive the 16, 50, 84 percentile intervals of the sbi_posterior parameters for an entire dataframe.
     :param posterior_network: SBI posterior neural network (torch)
@@ -111,7 +116,7 @@ def fit_model_to_dataframe(posterior_network, dataframe, identifier_column, line
     parameters = np.ones((len(dataframe), 26)) * -999.
     parameters[:,0] = dataframe[identifier_column].to_numpy()
     for i in range(len(dataframe)):
-        parameters[i,1:] = fit_model_to_data(posterior, dataframe[line_flux_labels].to_numpy()[i], dataframe[line_flux_error_labels].to_numpy()[i], interpolated_logOH, num_samples=num_samples, prior_lower_boundary=prior_lower_boundary, prior_upper_boundary=prior_upper_boundary, plotting=plotting, plot_name=plot_name+'_'+str(i))
+        parameters[i,1:] = fit_model_to_data(posterior, dataframe[line_flux_labels].to_numpy()[i], dataframe[line_flux_error_labels].to_numpy()[i], interpolated_logOH, num_samples=num_samples, prior_lower_boundary=prior_lower_boundary, prior_upper_boundary=prior_upper_boundary, plotting=plotting, plot_name=plot_name+'_'+str(i), logtau=logtau)
         if i % 100 == 0.0:
             np.save(output_file+'.npy', parameters)
 
