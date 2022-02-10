@@ -57,11 +57,12 @@ def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_lo
     '''
     posterior_samples = sbi_posterior.sample((num_samples,), x=prepare_input(data_flux, data_flux_error))
     posterior_samples = posterior_samples.numpy()
-    if logtau:
-        posterior_samples[:, 4] = 10**posterior_samples[:, 4]
 
     sample_mask = np.prod((posterior_samples > prior_lower_boundary)[:, 1:] & (posterior_samples < prior_upper_boundary)[:, 1:], axis=1) == 1
     masked_posterior_samples = posterior_samples[sample_mask]
+
+    if logtau:
+        masked_posterior_samples[:, 4] = 10**masked_posterior_samples[:, 4]
 
     parameters_out = np.ones((25)) * -999.
     parameters_out[-1] = np.sum(sample_mask) / len(sample_mask)
