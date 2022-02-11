@@ -41,7 +41,7 @@ def prepare_input(flux, flux_error):
     output = np.expand_dims(np.concatenate([flux, flux_error]), axis=0)
     return torch.from_numpy(output)
 
-def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_logOH, num_samples=10000, prior_lower_boundary=[0., -1., -4., 0.1, 0.01], prior_upper_boundary=[6., 0.7, -1., 0.6, 4.0], plotting=False, plot_name='test'):
+def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_logOH, num_samples=10000, prior_lower_boundary=[0., -1., -4., 0.1, -2.], prior_upper_boundary=[6., 0.7, -1., 0.6, 0.6], plotting=False, plot_name='test'):
     '''
     Inference procedure to derive the 16, 50, 84 percentile intervals of the sbi_posterior parameters.
     :param sbi_posterior: Trained SBI posterior
@@ -77,7 +77,7 @@ def fit_model_to_data(sbi_posterior, data_flux, data_flux_error, interpolated_lo
                           labels=['Amplitude', 'Z', 'U', '$\\xi$', '$\\tau$', 'log(O/H)', 'log(dust)', 'log(gas)'])
             plt.savefig('./corner_{}.pdf'.format(plot_name))
             plt.close()
-    return parameters_out
+    return parameters_out, posterior_samples
 
 
 def fit_model_to_dataframe(posterior_network, dataframe, identifier_column, line_flux_labels, line_flux_error_labels, output_file, interpolated_logOH, num_samples=10000, prior_lower_boundary=[0., -1., -4., 0.1, -2.], prior_upper_boundary=[6., 0.7, -1., 0.6, 0.6], plotting=False, plot_name='test'):
@@ -111,7 +111,7 @@ def fit_model_to_dataframe(posterior_network, dataframe, identifier_column, line
     parameters = np.ones((len(dataframe), 26)) * -999.
     parameters[:,0] = dataframe[identifier_column].to_numpy()
     for i in range(len(dataframe)):
-        parameters[i,1:] = fit_model_to_data(posterior, dataframe[line_flux_labels].to_numpy()[i], dataframe[line_flux_error_labels].to_numpy()[i], interpolated_logOH, num_samples=num_samples, prior_lower_boundary=prior_lower_boundary, prior_upper_boundary=prior_upper_boundary, plotting=plotting, plot_name=plot_name+'_'+str(i))
+        parameters[i,1:], _ = fit_model_to_data(posterior, dataframe[line_flux_labels].to_numpy()[i], dataframe[line_flux_error_labels].to_numpy()[i], interpolated_logOH, num_samples=num_samples, prior_lower_boundary=prior_lower_boundary, prior_upper_boundary=prior_upper_boundary, plotting=plotting, plot_name=plot_name+'_'+str(i))
         if i % 100 == 0.0:
             np.save(output_file+'.npy', parameters)
 

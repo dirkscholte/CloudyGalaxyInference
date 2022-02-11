@@ -55,10 +55,7 @@ def simulation_SDSS(theta, line_wavelengths, interpolated_flux, redshifts, gauss
     :return:
     '''
     theta = theta.numpy()[0]
-    if dust_geometry=='foreground_screen':
-        transmission = transmission_function(line_wavelengths, theta[-1])
-    elif dust_geometry=='slab':
-        transmission = transmission_function_slab(line_wavelengths, theta[-1])
+    transmission = transmission_function(line_wavelengths, theta[-1])
     model_line_flux = np.zeros((len(interpolated_flux)))
     for i in range(len(interpolated_flux)):
         model_line_flux[i] = 10**theta[0] * interpolated_flux[i](theta[1:-1]) * transmission[i]
