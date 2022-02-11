@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from scipy.special import exp1
 
-def transmission_function(lambda_, tau, n=-1.3):
+def transmission_function(lambda_, logtau, n=-1.3):
     '''
     Function to calculate the transmission function. As in Charlot and Fall (2000)
     :param lambda_: Wavelength values of the spectrum bins in Angstrom
@@ -11,7 +11,7 @@ def transmission_function(lambda_, tau, n=-1.3):
     :return: Transmission function for each bin in the spectrum
     '''
     lambda_ = np.array(lambda_)
-    return np.exp(-tau * (lambda_/5500)**n)
+    return np.exp(-10**logtau * (lambda_/5500)**n)
 
 def transmission_function_slab(wl, tauV, n=-1.3):
     tau_wl = tauV * (wl/5500.)**n
@@ -20,7 +20,7 @@ def transmission_function_slab(wl, tauV, n=-1.3):
 def simulation_MUSE(theta, line_wavelengths, interpolated_flux, redshifts, gaussian_noise_model, dust_geometry='foreground_screen'):
     '''
     Function to simulate emission line observations from photoionization models and a Gaussian noise model.
-    :param theta: Input vector containing the free parameters of the model (Amplitude, Z, U, xi, tau)
+    :param theta: Input vector containing the free parameters of the model (Amplitude, Z, U, xi, logtau)
     :param line_wavelengths: Numpy array with the rest wavelengths of the emission lines
     :param interpolated_flux: Interpolated emission line flux from photoionization models
     :param redshift: The redshift at which the observations are simulated.
@@ -28,10 +28,7 @@ def simulation_MUSE(theta, line_wavelengths, interpolated_flux, redshifts, gauss
     :return:
     '''
     theta = theta.numpy()[0]
-    if dust_geometry=='foreground_screen':
-        transmission = transmission_function(line_wavelengths, theta[-1])
-    elif dust_geometry=='slab':
-        transmission = transmission_function_slab(line_wavelengths, theta[-1])
+    transmission = transmission_function(line_wavelengths, theta[-1])
     model_line_flux = np.zeros((len(interpolated_flux)))
     for i in range(len(interpolated_flux)):
         model_line_flux[i] = 10**theta[0] * interpolated_flux[i](theta[1:-1]) * transmission[i]
@@ -50,7 +47,7 @@ def simulation_MUSE(theta, line_wavelengths, interpolated_flux, redshifts, gauss
 def simulation_SDSS(theta, line_wavelengths, interpolated_flux, redshifts, gaussian_noise_model, dust_geometry='foreground_screen'):
     '''
     Function to simulate emission line observations from photoionization models and a Gaussian noise model.
-    :param theta: Input vector containing the free parameters of the model (Amplitude, Z, U, xi, tau)
+    :param theta: Input vector containing the free parameters of the model (Amplitude, Z, U, xi, logtau)
     :param line_wavelengths: Numpy array with the rest wavelengths of the emission lines
     :param interpolated_flux: Interpolated emission line flux from photoionization models
     :param redshift: The redshift at which the observations are simulated.
