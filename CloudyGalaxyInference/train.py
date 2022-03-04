@@ -4,7 +4,7 @@ import torch
 from sbi import utils as utils
 from sbi.inference import SNPE, simulate_for_sbi
 
-def train_MUSE(simulation, save_model_name, save_path='./', num_simulations=1e6, prior_lower_boundary=[0., -1., -4., 0.1, 0.01], prior_upper_boundary=[6., 0.7, -1., 0.6, 4.0]):
+def train_MUSE(simulation, save_model_name, save_path='./', num_simulations=1e6, prior_lower_boundary=[1., -1., -4., 0.1, -2.0], prior_upper_boundary=[5., 0.7, -1., 0.6, 0.6]):
     '''
     Function to train a SBI model on MUSE input data.
     :param simulation: simulation taking input parameter theta(torch array with free parameters (amplitude, Z, U, xi, tau))
@@ -35,7 +35,7 @@ def train_MUSE(simulation, save_model_name, save_path='./', num_simulations=1e6,
         if inference._converged(epoch, 20):
             break
 
-def train(simulation, save_model_name, save_path='./', num_simulations=1e6, prior_lower_boundary=[0., -1., -4., 0.1, -2.], prior_upper_boundary=[6., 0.7, -1., 0.6, 0.6]):
+def train(simulation, save_model_name, save_path='./', num_simulations=1e6, prior_lower_boundary=[1., -1., -4., 0.1, -2.], prior_upper_boundary=[5., 0.7, -1., 0.6, 0.6]):
     '''
     Function to train a SBI model on input data.
     :param simulation: simulation taking input parameter theta(torch array with free parameters (amplitude, Z, U, xi, tau))

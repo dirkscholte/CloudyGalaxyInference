@@ -63,7 +63,7 @@ class GaussianNoiseModelMUSE():
         return
 
     def create_noise_model(self):
-        wl_sample = np.linspace(np.min(self.observed_wavelength_cat), np.max(self.observed_wavelength_cat), 200)
+        wl_sample = np.linspace(4000., 10000., 1000)
         percentile_sample = np.linspace(0.0,100.0,10)
         mask = (self.flux_error_cat > 0.0) & (self.flux_error_cat < 1000.0)
         errors_out = running_percentile(wl_sample, self.observed_wavelength_cat[mask], self.flux_error_cat[mask], 1*(wl_sample[1] - wl_sample[0]), percentiles=percentile_sample, minimum_data=1, fill_value=0.0)
