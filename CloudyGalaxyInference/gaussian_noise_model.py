@@ -94,18 +94,19 @@ def running_percentile(x_sample, x, y, width, percentiles=[16,50,84], minimum_da
     return percentiles_out
 
 class GaussianNoiseModelWavelength():
-    def __init__(self, flux_error_cat, observed_wavelength_cat):
+    def __init__(self, flux_error_cat, observed_wavelength_cat, wl_range=[3600.0, 9800.0]):
         self.flux_error_cat = flux_error_cat
         self.observed_wavelength_cat = observed_wavelength_cat
+        self.wl_range = wl_range
         self.noise_model = self.create_noise_model()
         return
 
     def create_noise_model(self):
-        wl_sample = np.linspace(np.min(3600.0), np.max(9800.0), 1000)
+        wl_sample = np.linspace(self.wl_range[0], self.wl_range[1], 1000)
         percentile_sample = np.linspace(0.0,100.0,10)
         mask = (self.flux_error_cat > 0.0) & (self.flux_error_cat < 1000.0)
         errors_out = running_percentile(wl_sample, self.observed_wavelength_cat[mask], self.flux_error_cat[mask], 1*(wl_sample[1] - wl_sample[0]), percentiles=percentile_sample, minimum_data=1, fill_value=0.0)
-        return RegularGridInterpolator((wl_sample, percentile_sample), errors_out, bounds_error=False, fill_value=0.0)
+        return RegularGridInterpolator((wl_sample, percentile_sample), errors_out, bounds_error=False, fill_value=0.0, method='nearest')
 
     def add_gaussian_noise(self, input_flux, input_wavelength, noise_percentile):
         flux_error = self.noise_model(np.stack([input_wavelength, noise_percentile], axis=1))
