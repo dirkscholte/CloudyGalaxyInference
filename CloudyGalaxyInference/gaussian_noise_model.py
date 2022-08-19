@@ -124,6 +124,47 @@ class GaussianNoiseModelWavelength():
         #plt.plot(wl_sample, self.noise_model(np.stack([wl_sample, np.ones_like(wl_sample)*95.4], axis=1)), linewidth=1, alpha=0.2)
         plt.savefig('gaussian_noise_model_diagnostics.png')
 
+class GaussianNoiseModelWavelengthFlux():
+    def __init__(self, flux_cat, flux_error_cat, observed_wavelength_cat, wl_range=[3600.0, 9800.0]):
+        self.flux_cat = flux_cat
+        self.flux_error_cat = flux_error_cat
+        self.observed_wavelength_cat = observed_wavelength_cat
+        self.wl_range = wl_range
+        self.noise_model = self.create_noise_model()
+        return
+
+    def create_noise_model(self):
+        mask = (self.flux_cat > 0.0) & (self.flux_cat < 50000.0)
+        wl_sample = np.linspace(self.wl_range[0], self.wl_range[1], 1000)
+        flux_sample = np.linspace(np.nanpercentile(np.log10(self.flux_cat[mask]), 0.0001), np.nanpercentile(np.log10(self.flux_cat[mask]), 99.999999999999999), 10)
+        percentile_sample = np.linspace(0.0,100.0,10)
+        global errors_out
+        errors_out = np.zeros((1000, 10, 10))
+        for i in range(len(flux_sample)):
+            half_bin_width = (flux_sample[1] - flux_sample[0])/2
+            flux_mask = (np.log10(self.flux_cat) > flux_sample[i] - half_bin_width) & (np.log10(self.flux_cat) < flux_sample[i] + half_bin_width)
+            errors_out[:,i,:] = running_percentile(wl_sample, self.observed_wavelength_cat[mask&flux_mask], self.flux_error_cat[mask&flux_mask], 1*(wl_sample[1] - wl_sample[0]), percentiles=percentile_sample, minimum_data=1, fill_value=np.nan)
+        for i in range(len(wl_sample)):
+            errors_out[i,:,:] = pd.DataFrame(errors_out[i,:,:]).interpolate(limit_direction='both').to_numpy()
+        errors_out[pd.isna(errors_out)] = 0.0
+        return RegularGridInterpolator((wl_sample, flux_sample, percentile_sample), errors_out, bounds_error=False, fill_value=None, method='nearest')
+
+    def add_gaussian_noise(self, input_flux, input_wavelength, noise_percentile):
+        flux_error = self.noise_model(np.stack([input_wavelength, np.log10(input_flux), noise_percentile], axis=1))
+        output_flux = input_flux + np.random.normal(loc=0.0, scale=1.0, size=len(input_flux)) * flux_error
+        output_flux[flux_error == 0.0] = 0.0
+        return output_flux, flux_error
+
+    def plot_noise(self):
+        wl_sample = np.arange(3600., 9800., 1.0)
+        #plt.scatter(self.observed_wavelength_cat, self.flux_error_cat)
+        #plt.plot(wl_sample, self.noise_model(np.stack([wl_sample, np.ones_like(wl_sample)*4.6], axis=1)), linewidth=1, alpha=0.2)
+        plt.plot(wl_sample, self.noise_model(np.stack([wl_sample, np.ones_like(wl_sample), np.ones_like(wl_sample)*16.], axis=1)), linewidth=1, alpha=0.2)
+        plt.plot(wl_sample, self.noise_model(np.stack([wl_sample, np.ones_like(wl_sample), np.ones_like(wl_sample)*50.], axis=1)), linewidth=1, alpha=0.2)
+        plt.plot(wl_sample, self.noise_model(np.stack([wl_sample, np.ones_like(wl_sample), np.ones_like(wl_sample)*84.], axis=1)), linewidth=1, alpha=0.2)
+        #plt.plot(wl_sample, self.noise_model(np.stack([wl_sample, np.ones_like(wl_sample)*95.4], axis=1)), linewidth=1, alpha=0.2)
+        plt.savefig('gaussian_noise_model_diagnostics.png')
+
 def running_percentile(x_sample, x, y, width, percentiles=[16,50,84], minimum_data=10, fill_value=np.nan):
     percentiles_out = np.zeros((len(x_sample), len(percentiles))) * fill_value
     for i in range(len(x_sample)):
